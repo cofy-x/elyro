@@ -64,7 +64,15 @@ if [[ "${fixture_mode}" == "0" ]]; then
   project_root="${temp_dir}/projects"
   mkdir -p "${project_root}/existing"
   printf 'module example.com/release-smoke\n' >"${project_root}/existing/go.mod"
-  "${install_dir}/elyro" init \
+  prerequisite_bin="${temp_dir}/prerequisite-bin"
+  mkdir -p "${prerequisite_bin}"
+  printf '%s\n' \
+    '#!/usr/bin/env bash' \
+    'set -euo pipefail' \
+    '[[ "${1:-}" == "info" ]]' \
+    >"${prerequisite_bin}/docker"
+  chmod 0755 "${prerequisite_bin}/docker"
+  PATH="${prerequisite_bin}:${PATH}" "${install_dir}/elyro" init \
     --project-dir "${project_root}/existing" --yes
   grep -q 'toolchain: go' "${project_root}/existing/elyro.yaml"
 fi
