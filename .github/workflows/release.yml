@@ -88,8 +88,8 @@ jobs:
       - run: |
           mkdir -p homebrew-tap/Formula
           install -m 0644 "${RUNNER_TEMP}/elyro.rb" homebrew-tap/Formula/elyro.rb
-          git -C homebrew-tap config user.name "cofy-x release bot"
-          git -C homebrew-tap config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C homebrew-tap config user.name "wayne"
+          git -C homebrew-tap config user.email "rcywjo@gmail.com"
           git -C homebrew-tap add Formula/elyro.rb
           if ! git -C homebrew-tap diff --cached --quiet; then
             git -C homebrew-tap commit -m "elyro ${GITHUB_REF_NAME}"
