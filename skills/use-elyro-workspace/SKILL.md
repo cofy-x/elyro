@@ -1,0 +1,16 @@
+---
+name: use-elyro-workspace
+description: Use Elyro to build, test, and debug the current project inside its local Linux Workspace. Apply when a project uses Elyro, when Linux-specific validation is needed from macOS, or when AGENTS.md asks the coding agent to execute development commands through Elyro.
+---
+
+# Use Elyro Workspace
+
+Use Elyro as the only interface to the project's local Linux development environment.
+
+1. Inspect the current state with `elyro status --json`.
+2. If no Workspace exists, start one with `elyro up --json`. When Toolchain detection is ambiguous, inspect the project and retry with an explicit `--toolchain`; do not run `elyro init` unless the user asks to create configuration.
+3. Run Linux build, test, lint, and debugging commands with `elyro exec -- COMMAND [ARG...]`.
+4. For pipes, redirects, expansion, or compound shell syntax, invoke it explicitly with `elyro exec -- bash -lc '...'`.
+5. If the environment is unhealthy or a prerequisite is missing, inspect `elyro doctor --json` before proposing changes.
+
+Do not bypass Elyro by invoking Docker or SSH directly. Do not install or run a coding-agent CLI inside the Workspace. Do not stop or remove a Workspace that was already running before the task. Leave `elyro open` and destructive cleanup such as `elyro down` to the user unless they explicitly request it.

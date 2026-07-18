@@ -1,0 +1,55 @@
+version: 2
+
+project_name: elyro
+
+before:
+  hooks:
+    - go mod verify
+    - go test ./cmd/... ./internal/...
+
+builds:
+  - id: elyro
+    main: ./cmd/elyro
+    binary: elyro
+    env:
+      - CGO_ENABLED=0
+    goos: [darwin, linux]
+    goarch: [amd64, arm64]
+    ldflags:
+      - -s -w
+      - -X github.com/cofy-x/elyro/internal/version.Version={{.Tag}}
+      - -X github.com/cofy-x/elyro/internal/version.Commit={{.FullCommit}}
+      - -X github.com/cofy-x/elyro/internal/version.BuildDate={{.Date}}
+archives:
+  - id: elyro
+    ids: [elyro]
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+    files:
+      - LICENSE
+      - README.md
+      - NOTICE
+      - THIRD_PARTY_NOTICES.md
+
+checksum:
+  name_template: checksums.txt
+  algorithm: sha256
+
+sboms:
+  - artifacts: archive
+    disable: false
+
+changelog:
+  use: git
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+
+release:
+  prerelease: true
+  make_latest: false
+  header: |
+    Elyro {{ .Tag }} is a beta release. See README.md for the supported platform
+    and image matrix.

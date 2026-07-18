@@ -1,0 +1,36 @@
+name: Core image PR
+
+on:
+  pull_request:
+    paths:
+      - 'images/workspace-base/**'
+      - 'images/workspace-python/**'
+      - 'images/workspace-go/**'
+      - 'images/workspace-java/**'
+      - 'images/workspace-node/**'
+      - 'release/**'
+      - 'scripts/ci/build-core-images.sh'
+      - 'scripts/ci/smoke-core-images.sh'
+      - '.github/workflows/images.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build-smoke:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+      - name: Verify fixed inputs
+        run: scripts/ci/check-release-inputs.sh
+      - name: Build affected core image family
+        env:
+          ELYRO_BUILD_PLATFORM: linux/amd64
+          ELYRO_BUILD_VERSION: pr
+        run: scripts/ci/build-core-images.sh
+      - name: Smoke core images
+        env:
+          ELYRO_BUILD_PLATFORM: linux/amd64
+          ELYRO_BUILD_VERSION: pr
+        run: scripts/ci/smoke-core-images.sh

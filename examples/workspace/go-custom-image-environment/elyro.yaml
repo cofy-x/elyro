@@ -1,0 +1,12 @@
+version: 1
+default_environment: api
+environments:
+  api:
+    toolchain: go
+    image: elyro/examples/go-custom-environment:dev
+    platform: linux/amd64
+    vscode:
+      extensions:
+        - redhat.vscode-yaml
+      settings:
+        go.toolsManagement.autoUpdate: true

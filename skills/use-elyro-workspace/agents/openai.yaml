@@ -1,0 +1,4 @@
+interface:
+  display_name: "Use Elyro Workspace"
+  short_description: "Build and test projects in an Elyro Linux workspace"
+  default_prompt: "Use $use-elyro-workspace to build and test this project in its Elyro Linux workspace."

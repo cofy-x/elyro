@@ -1,0 +1,58 @@
+# --- General / Environment ---
+.env
+.env*
+!**/.env.example
+!.env.agent.example
+*.log
+.tmp/
+.docker/
+bin/
+
+# --- OS Metadata ---
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# --- Editors / IDEs ---
+.idea/
+*.iml
+*.sublime-project
+*.sublime-workspace
+
+# --- Node.js / TypeScript ---
+node_modules/
+dist/
+build/
+out/
+.pnpm-debug.log*
+pnpm-debug.log*
+*.tsbuildinfo
+
+coverage/
+*.lcov
+
+# --- Go ---
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.prof
+
+# --- Python (uv) ---
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+.ipynb_checkpoints/
+
+junit.xml
+
+# --- Database ---
+*.db
+*.db-shm
+*.db-wal

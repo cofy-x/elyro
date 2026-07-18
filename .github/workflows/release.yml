@@ -1,0 +1,217 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+  packages: write
+  id-token: write
+  attestations: write
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ghcr.io/cofy-x/elyro
+  IMAGE_SOURCE: ${{ github.server_url }}/${{ github.repository }}
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    outputs:
+      go: ${{ steps.versions.outputs.go }}
+      go_sha256_amd64: ${{ steps.versions.outputs.go_sha256_amd64 }}
+      go_sha256_arm64: ${{ steps.versions.outputs.go_sha256_arm64 }}
+      uv: ${{ steps.versions.outputs.uv }}
+      uv_sha256_amd64: ${{ steps.versions.outputs.uv_sha256_amd64 }}
+      uv_sha256_arm64: ${{ steps.versions.outputs.uv_sha256_arm64 }}
+      gradle: ${{ steps.versions.outputs.gradle }}
+      gradle_sha256: ${{ steps.versions.outputs.gradle_sha256 }}
+      node: ${{ steps.versions.outputs.node }}
+      node_sha256_amd64: ${{ steps.versions.outputs.node_sha256_amd64 }}
+      node_sha256_arm64: ${{ steps.versions.outputs.node_sha256_arm64 }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        with:
+          fetch-depth: 0
+      - run: scripts/ci/check-release-inputs.sh "${GITHUB_REF_NAME}"
+      - env:
+          HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
+        run: test -n "${HOMEBREW_TAP_GITHUB_TOKEN}"
+      - id: versions
+        run: |
+          source release/versions.env
+          {
+            echo "go=${ELYRO_GO_VERSION}"
+            echo "go_sha256_amd64=${ELYRO_GO_SHA256_AMD64}"
+            echo "go_sha256_arm64=${ELYRO_GO_SHA256_ARM64}"
+            echo "uv=${ELYRO_UV_VERSION}"
+            echo "uv_sha256_amd64=${ELYRO_UV_SHA256_AMD64}"
+            echo "uv_sha256_arm64=${ELYRO_UV_SHA256_ARM64}"
+            echo "gradle=${ELYRO_GRADLE_VERSION}"
+            echo "gradle_sha256=${ELYRO_GRADLE_SHA256}"
+            echo "node=${ELYRO_NODE_VERSION}"
+            echo "node_sha256_amd64=${ELYRO_NODE_SHA256_AMD64}"
+            echo "node_sha256_arm64=${ELYRO_NODE_SHA256_ARM64}"
+          } >> "${GITHUB_OUTPUT}"
+
+  binaries:
+    needs: validate
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+      - uses: sigstore/cosign-installer@f713795cb21599bc4e5c4b58cbad1da852d7eeb9 # v3
+      - uses: anchore/sbom-action/download-syft@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
+      - uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
+        with:
+          distribution: goreleaser
+          version: v2.13.3
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - run: scripts/ci/install-release-smoke.sh "${GITHUB_REF_NAME}" dist
+      - uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373 # v4.1.1
+        with:
+          subject-path: 'dist/*.tar.gz'
+      - run: scripts/release/generate-homebrew-formula.sh "${GITHUB_REF_NAME}" dist "${RUNNER_TEMP}/elyro.rb"
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        with:
+          repository: cofy-x/homebrew-tap
+          token: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
+          path: homebrew-tap
+      - run: |
+          mkdir -p homebrew-tap/Formula
+          install -m 0644 "${RUNNER_TEMP}/elyro.rb" homebrew-tap/Formula/elyro.rb
+          git -C homebrew-tap config user.name "cofy-x release bot"
+          git -C homebrew-tap config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C homebrew-tap add Formula/elyro.rb
+          if ! git -C homebrew-tap diff --cached --quiet; then
+            git -C homebrew-tap commit -m "elyro ${GITHUB_REF_NAME}"
+            git -C homebrew-tap push
+          fi
+
+  homebrew-install-smoke:
+    needs: binaries
+    runs-on: macos-14
+    steps:
+      - run: brew install cofy-x/tap/elyro
+      - env:
+          EXPECTED_VERSION: ${{ github.ref_name }}
+        run: |
+          test "$(elyro version --json | python3 -c 'import json,sys; print(json.load(sys.stdin)["version"])')" = "${EXPECTED_VERSION}"
+          elyro skill show >/dev/null
+          brew test cofy-x/tap/elyro
+
+  workspace-base:
+    needs: validate
+    runs-on: ubuntu-24.04
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      - uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8 # v4.2.0
+      - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+      - uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: build
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: images/workspace-base
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ env.IMAGE_PREFIX }}/workspace-base:${{ github.ref_name }}
+          labels: |
+            org.opencontainers.image.source=${{ env.IMAGE_SOURCE }}
+            org.opencontainers.image.url=${{ env.IMAGE_SOURCE }}
+            org.opencontainers.image.version=${{ github.ref_name }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.licenses=Apache-2.0
+          sbom: true
+          provenance: mode=max
+      - uses: sigstore/cosign-installer@f713795cb21599bc4e5c4b58cbad1da852d7eeb9 # v3
+      - run: cosign sign --yes "${IMAGE_PREFIX}/workspace-base@${{ steps.build.outputs.digest }}"
+
+  workspace-toolchains:
+    needs: [validate, workspace-base]
+    strategy:
+      matrix:
+        include:
+          - image: workspace-python
+            context: images/workspace-python
+          - image: workspace-go
+            context: images/workspace-go
+          - image: workspace-java
+            context: images/workspace-java
+          - image: workspace-node
+            context: images/workspace-node
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      - uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8 # v4.2.0
+      - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+      - uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: build
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: ${{ matrix.context }}
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ env.IMAGE_PREFIX }}/${{ matrix.image }}:${{ github.ref_name }}
+          labels: |
+            org.opencontainers.image.source=${{ env.IMAGE_SOURCE }}
+            org.opencontainers.image.url=${{ env.IMAGE_SOURCE }}
+            org.opencontainers.image.version=${{ github.ref_name }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.licenses=Apache-2.0
+          build-args: |
+            WORKSPACE_BASE_IMAGE=${{ env.IMAGE_PREFIX }}/workspace-base@${{ needs.workspace-base.outputs.digest }}
+            UV_VERSION=${{ needs.validate.outputs.uv }}
+            UV_SHA256_AMD64=${{ needs.validate.outputs.uv_sha256_amd64 }}
+            UV_SHA256_ARM64=${{ needs.validate.outputs.uv_sha256_arm64 }}
+            GO_VERSION=${{ needs.validate.outputs.go }}
+            GO_SHA256_AMD64=${{ needs.validate.outputs.go_sha256_amd64 }}
+            GO_SHA256_ARM64=${{ needs.validate.outputs.go_sha256_arm64 }}
+            GRADLE_VERSION=${{ needs.validate.outputs.gradle }}
+            GRADLE_SHA256=${{ needs.validate.outputs.gradle_sha256 }}
+            NODE_VERSION=${{ needs.validate.outputs.node }}
+            NODE_SHA256_AMD64=${{ needs.validate.outputs.node_sha256_amd64 }}
+            NODE_SHA256_ARM64=${{ needs.validate.outputs.node_sha256_arm64 }}
+          sbom: true
+          provenance: mode=max
+      - uses: sigstore/cosign-installer@f713795cb21599bc4e5c4b58cbad1da852d7eeb9 # v3
+      - run: cosign sign --yes "${IMAGE_PREFIX}/${{ matrix.image }}@${{ steps.build.outputs.digest }}"
+
+  workspace-images-verify:
+    needs: [validate, workspace-base, workspace-toolchains]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+      - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+      - name: Verify published image contract and budgets
+        run: |
+          source release/versions.env
+          go run ./scripts/images/report \
+            --version "${GITHUB_REF_NAME}" \
+            --compare-version "${ELYRO_COMPARE_VERSION}" \
+            --image-prefix "${IMAGE_PREFIX}" \
+            --expected-revision "${GITHUB_SHA}" \
+            --expected-source "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}" \
+            --budget-file release/image-budgets.json \
+            --top-layers 1

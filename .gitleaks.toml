@@ -1,0 +1,11 @@
+title = "Elyro gitleaks configuration"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Documented and test-only placeholder bearer tokens"
+regexTarget = "secret"
+regexes = [
+  '''^(smoke-token|wrong-token|YOUR_MANAGEMENT_TOKEN)$''',
+]

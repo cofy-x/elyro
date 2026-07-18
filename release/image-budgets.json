@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "unit": "MiB",
+  "images": {
+    "workspace-base": 90,
+    "workspace-python": 230,
+    "workspace-go": 230,
+    "workspace-node": 230,
+    "workspace-java": 400
+  }
+}
