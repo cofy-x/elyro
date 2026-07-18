@@ -207,11 +207,15 @@ jobs:
       - name: Verify published image contract and budgets
         run: |
           source release/versions.env
-          go run ./scripts/images/report \
-            --version "${GITHUB_REF_NAME}" \
-            --compare-version "${ELYRO_COMPARE_VERSION}" \
-            --image-prefix "${IMAGE_PREFIX}" \
-            --expected-revision "${GITHUB_SHA}" \
-            --expected-source "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}" \
-            --budget-file release/image-budgets.json \
+          report_args=(
+            --version "${GITHUB_REF_NAME}"
+            --image-prefix "${IMAGE_PREFIX}"
+            --expected-revision "${GITHUB_SHA}"
+            --expected-source "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}"
+            --budget-file release/image-budgets.json
             --top-layers 1
+          )
+          if [[ -n "${ELYRO_COMPARE_VERSION}" ]]; then
+            report_args+=(--compare-version "${ELYRO_COMPARE_VERSION}")
+          fi
+          go run ./scripts/images/report "${report_args[@]}"

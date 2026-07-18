@@ -1,4 +1,4 @@
-ARG WORKSPACE_BASE_IMAGE=ghcr.io/cofy-x/elyro/workspace-base:v0.9.0
+ARG WORKSPACE_BASE_IMAGE=ghcr.io/cofy-x/elyro/workspace-base:v0.1.0
 FROM ${WORKSPACE_BASE_IMAGE}
 
 ARG ELYRO_PROXY_URL=

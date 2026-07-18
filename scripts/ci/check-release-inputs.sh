@@ -21,7 +21,9 @@ require_line() {
 while IFS='=' read -r key value; do
   [[ -z "${key}" || "${key}" == \#* ]] && continue
   [[ "${key}" =~ ^ELYRO_[A-Z0-9_]+$ ]] || fail "invalid key ${key}"
-  [[ -n "${value}" ]] || fail "${key} is empty"
+  if [[ -z "${value}" && "${key}" != "ELYRO_COMPARE_VERSION" ]]; then
+    fail "${key} is empty"
+  fi
   lower_value="$(printf '%s' "${value}" | tr '[:upper:]' '[:lower:]')"
   if [[ "${lower_value}" =~ (^|[-_.:/])(latest|stable|main|master|nightly|edge)($|[-_.:/]) ]]; then
     fail "${key} uses floating value ${value}"
@@ -32,10 +34,12 @@ done <"${VERSIONS_FILE}"
 source "${VERSIONS_FILE}"
 [[ "${ELYRO_RELEASE_VERSION}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([+-][0-9A-Za-z.-]+)?$ ]] || \
   fail "ELYRO_RELEASE_VERSION must be a v-prefixed semantic version"
-[[ "${ELYRO_COMPARE_VERSION}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([+-][0-9A-Za-z.-]+)?$ ]] || \
-  fail "ELYRO_COMPARE_VERSION must be a v-prefixed semantic version"
-[[ "${ELYRO_COMPARE_VERSION}" != "${ELYRO_RELEASE_VERSION}" ]] || \
-  fail "ELYRO_COMPARE_VERSION must differ from ELYRO_RELEASE_VERSION"
+if [[ -n "${ELYRO_COMPARE_VERSION}" ]]; then
+  [[ "${ELYRO_COMPARE_VERSION}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([+-][0-9A-Za-z.-]+)?$ ]] || \
+    fail "ELYRO_COMPARE_VERSION must be empty or a v-prefixed semantic version"
+  [[ "${ELYRO_COMPARE_VERSION}" != "${ELYRO_RELEASE_VERSION}" ]] || \
+    fail "ELYRO_COMPARE_VERSION must differ from ELYRO_RELEASE_VERSION"
+fi
 
 if [[ -n "${1:-}" && "${1}" != "${ELYRO_RELEASE_VERSION}" ]]; then
   fail "tag ${1} does not match reviewed version ${ELYRO_RELEASE_VERSION}"
