@@ -1,5 +1,9 @@
 # Elyro
 
+[![Release](https://img.shields.io/github/v/tag/cofy-x/elyro?sort=semver&label=release)](https://github.com/cofy-x/elyro/releases)
+[![CI](https://github.com/cofy-x/elyro/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/cofy-x/elyro/actions/workflows/ci.yml)
+[![License](https://img.shields.io/github/license/cofy-x/elyro)](LICENSE)
+
 Edit on Mac. Build and test in Linux.
 
 Elyro gives people and coding agents a predictable local Linux Workspace. Your project stays on the Mac; build, test, and debug commands run in a maintained Linux container; VS Code or Cursor can take over through Remote SSH.
