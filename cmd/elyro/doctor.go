@@ -142,7 +142,12 @@ func addProjectDoctorChecks(report *doctorJSONView, projectDir string, explicit 
 	}
 	environment, err := elyroworkspace.ResolveEnvironment(root.Dir, project.MountDir, elyroworkspace.EnvironmentSelection{Platform: elyroworkspace.DefaultPlatform})
 	if err != nil {
-		report.add(doctorCheck{Scope: "project", Name: "workspace_configuration", Status: doctorStatusFail, Message: err.Error()})
+		if projectConfigurationExists(root.Dir) {
+			report.add(doctorCheck{Scope: "project", Name: "workspace_configuration", Status: doctorStatusFail, Message: err.Error()})
+			return
+		}
+		report.add(doctorCheck{Scope: "project", Name: "workspace_configuration", Status: doctorStatusWarn, Message: fmt.Sprintf("No Workspace Environment is selected: %v; `elyro up` can use an explicit --toolchain", err)})
+		addUnresolvedWorkspaceDoctorChecks(report, root.Dir, project.MountDir, daemonOK)
 		return
 	}
 	if root.ConfigPath == "" && environment.ProjectConfigured {
@@ -233,6 +238,37 @@ func addProjectDoctorChecks(report *doctorJSONView, projectDir string, explicit 
 			addEditorDoctorCheck(report, record.SSHAlias, record.ContainerWorkspaceDir)
 		}
 	}
+}
+
+func projectConfigurationExists(projectDir string) bool {
+	_, err := os.Lstat(filepath.Join(projectDir, "elyro.yaml"))
+	return err == nil || !os.IsNotExist(err)
+}
+
+func addUnresolvedWorkspaceDoctorChecks(report *doctorJSONView, projectDir, mountDir string, daemonOK bool) {
+	if !daemonOK {
+		return
+	}
+	status, err := local.Status(context.Background(), local.StatusRequest{ProjectDir: projectDir})
+	if err != nil {
+		report.add(doctorCheck{Scope: "workspace", Name: "workspace_state", Status: doctorStatusFail, Message: err.Error()})
+		return
+	}
+	if status.Container == nil {
+		report.Project.WorkspaceStatus = "absent"
+		report.add(doctorCheck{Scope: "workspace", Name: "workspace_state", Status: doctorStatusWarn, Message: "Workspace is absent; choose a Toolchain with `elyro up --toolchain` when it is needed"})
+		addEditorDoctorCheck(report, "", mountDir)
+		return
+	}
+	report.Project.WorkspaceStatus = status.Container.Status
+	statusLevel := doctorStatusWarn
+	message := fmt.Sprintf("Workspace is %s, but no Environment can be resolved for specification checks", status.Container.Status)
+	if status.Container.Status == "running" {
+		statusLevel = doctorStatusOK
+		message = "Workspace is running, but no Environment can be resolved for specification checks"
+	}
+	report.add(doctorCheck{Scope: "workspace", Name: "workspace_state", Status: statusLevel, Message: message})
+	addEditorDoctorCheck(report, "", mountDir)
 }
 
 func addEditorDoctorCheck(report *doctorJSONView, hostAlias, remoteDir string) {

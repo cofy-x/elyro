@@ -3,6 +3,8 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -51,6 +53,29 @@ func TestDoctorReportHealthFollowsFailures(t *testing.T) {
 	report.add(doctorCheck{Scope: "project", Name: "workspace_configuration", Status: doctorStatusFail, Message: "invalid"})
 	if report.Healthy {
 		t.Fatal("failure left report healthy")
+	}
+}
+
+func TestProjectConfigurationExists(t *testing.T) {
+	projectDir := t.TempDir()
+	if projectConfigurationExists(projectDir) {
+		t.Fatal("unconfigured project reported configuration")
+	}
+	if err := os.WriteFile(filepath.Join(projectDir, "elyro.yaml"), []byte("version: 1\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if !projectConfigurationExists(projectDir) {
+		t.Fatal("configured project did not report configuration")
+	}
+}
+
+func TestProjectConfigurationExistsForBrokenSymlink(t *testing.T) {
+	projectDir := t.TempDir()
+	if err := os.Symlink(filepath.Join(projectDir, "missing.yaml"), filepath.Join(projectDir, "elyro.yaml")); err != nil {
+		t.Fatal(err)
+	}
+	if !projectConfigurationExists(projectDir) {
+		t.Fatal("broken configuration symlink did not report configuration")
 	}
 }
 

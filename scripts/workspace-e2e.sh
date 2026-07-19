@@ -411,10 +411,42 @@ run_environment_case() {
   workspace_down "${project_dir}"
 }
 
+run_doctor_unconfigured_case() {
+  local project_dir report
+
+  project_dir="${TMP_ROOT}/doctor-unconfigured"
+  report="${TMP_ROOT}/doctor-unconfigured.json"
+  mkdir -p "${project_dir}"
+  project_dir="$(cd "${project_dir}" && pwd -P)"
+  git -C "${project_dir}" init -q
+
+  log "doctor: unconfigured Git project is healthy with warnings"
+  (cd "${project_dir}" && "${BIN}" doctor --json) >"${report}"
+  jq -e --arg root "${project_dir}" '
+    .schema_version == 2 and
+    .healthy == true and
+    .project.root == $root and
+    .project.source == "git" and
+    any(.checks[]; .name == "workspace_configuration" and .status == "warn")
+  ' "${report}" >/dev/null
+
+  printf 'environments: [\n' >"${project_dir}/elyro.yaml"
+  if (cd "${project_dir}" && "${BIN}" doctor --json) >"${report}" 2>/dev/null; then
+    printf '[workspace-e2e] expected invalid elyro.yaml to make doctor fail\n' >&2
+    return 1
+  fi
+  jq -e '
+    .schema_version == 2 and
+    .healthy == false and
+    any(.checks[]; .name == "workspace_configuration" and .status == "fail")
+  ' "${report}" >/dev/null
+}
+
 main() {
   require_cmd bash
   require_cmd curl
   require_cmd docker
+  require_cmd git
   require_cmd go
   require_cmd jq
   require_cmd python3
@@ -424,6 +456,7 @@ main() {
   : >"${SSH_CONFIG}"
 
   build_workspace
+  run_doctor_unconfigured_case
 
   local case_name
   for case_name in ${CASES}; do

@@ -56,7 +56,7 @@ elyro doctor --project-dir PATH --json
 
 Workspace lifecycle and inspection output uses schema 1 and exposes product concepts only: identity, project and mount paths, lifecycle status, Environment, Toolchain, image, platform, hostname, and published ports. Docker container names, labels, SSH aliases, identities, and known-hosts paths are implementation details and are not part of JSON output.
 
-Doctor uses schema 2 with `kind`, `healthy`, an optional resolved `project`, and scoped checks. Each check has a stable `scope`, `name`, `status`, and non-empty `message`; any `fail` makes the command exit non-zero, while `warn` remains successful. Doctor automatically adds project checks when the current directory belongs to a configured, registered, Git, or detected Toolchain project. It remains read-only. Errors use a non-zero exit code and actionable stderr; there is no global JSON error envelope.
+Doctor uses schema 2 with `kind`, `healthy`, an optional resolved `project`, and scoped checks. Each check has a stable `scope`, `name`, `status`, and non-empty `message`; any `fail` makes the command exit non-zero, while `warn` remains successful. Doctor automatically adds project checks when the current directory belongs to a configured, registered, Git, or detected Toolchain project. An unconfigured Git project with no detectable Toolchain is a warning; an invalid `elyro.yaml` is a failure. Doctor remains read-only. Errors use a non-zero exit code and actionable stderr; there is no global JSON error envelope.
 
 ## Terminal output
 
