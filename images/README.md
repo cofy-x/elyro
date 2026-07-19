@@ -22,16 +22,16 @@ make workspace-node-image-build
 make workspace-java-image-build
 ```
 
-Append `-arm64` to a target for a local arm64 build. Source builds use architecture-specific tags such as `elyro/workspace-go:dev-arm64`; public releases publish exact multi-architecture tags such as `ghcr.io/cofy-x/elyro/workspace-go:v0.1.1`.
+Append `-arm64` to a target for a local arm64 build. Source builds use architecture-specific tags such as `elyro/workspace-go:dev-arm64`; public releases publish exact multi-architecture tags such as `ghcr.io/cofy-x/elyro/workspace-go:v0.1.2`.
 
 Official sources and an empty proxy are the defaults. Controlled development environments may explicitly set `ELYRO_PROXY_URL`, `ELYRO_MIRROR_SOURCE`, and `ELYRO_GOPROXY`. `ELYRO_PROXY_URL=auto` is opt-in; Elyro never probes a local proxy by default.
 
 ## Report published size
 
 ```bash
-make image-report VERSION=v0.1.1
-make image-report VERSION=v0.1.1 COMPARE_VERSION=v0.1.0 FORMAT=json
-make image-report VERSION=v0.1.1 TOP_LAYERS=10
+make image-report VERSION=v0.1.2
+make image-report VERSION=v0.1.2 COMPARE_VERSION=v0.1.1 FORMAT=json
+make image-report VERSION=v0.1.2 TOP_LAYERS=10
 ```
 
 The report reads remote OCI manifests without pulling images and requires both supported architectures. Compressed size is the sum of platform layer descriptor sizes. Versions must be exact `v`-prefixed tags.

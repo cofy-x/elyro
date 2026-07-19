@@ -2,6 +2,21 @@
 
 All notable changes to Elyro are documented here. The project follows Semantic Versioning, and pre-1.0 releases may contain intentional breaking changes.
 
+## [0.1.2] - 2026-07-19
+
+### Changed
+
+- Refined terminal output with a cobalt-blue brand and section palette, clearer semantic roles, shorter command descriptions, and a compact first-run flow.
+- `elyro init` now focuses only on project detection, target validation, and configuration creation; system diagnostics remain in `elyro doctor`, while runtime checks remain in `elyro up` and `elyro open`.
+- `elyro open` now defaults to the first detected editor on Enter and provides explicit, successful cancellation with `q` or `cancel`.
+- Workspace startup progress now describes user-visible preparation, image pulling, and startup without exposing SSH, registry, or container implementation phases.
+- Official Toolchain images now provide a native zsh prompt that shows the Workspace and current Linux directory, plus color-aware listings, autosuggestions, and syntax highlighting without a shell framework.
+
+### Fixed
+
+- `elyro shell` now forwards only supported color overrides instead of inheriting host-specific terminal capabilities that may be unavailable in the Workspace.
+- Official images no longer export `DEBIAN_FRONTEND=noninteractive` at runtime; apt remains non-interactive only while images are built.
+
 ## [0.1.1] - 2026-07-19
 
 ### Changed
