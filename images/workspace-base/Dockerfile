@@ -5,7 +5,7 @@ ARG APT_RETRIES=3
 ARG APT_TIMEOUT=30
 ARG ELYRO_PROXY_URL=
 ARG ELYRO_PROXY_NO_PROXY=localhost,127.0.0.1,::1,host.docker.internal,.local
-ENV DEBIAN_FRONTEND=noninteractive
+ARG DEBIAN_FRONTEND=noninteractive
 
 RUN ARCH="$(dpkg --print-architecture)" && \
     if [ "$ARCH" = "amd64" ]; then UBUNTU_PATH="ubuntu"; DEFAULT_MIRROR="archive.ubuntu.com"; \
@@ -79,11 +79,7 @@ fi
 exec "$@"
 EOF_PROXY_RUN
 
-USER elyro
-RUN printf '%s\n' \
-      '# Elyro development shell' \
-      '[ -f /usr/share/zsh-autosuggestions/zsh-autosuggestions.zsh ] && source /usr/share/zsh-autosuggestions/zsh-autosuggestions.zsh' \
-      '[ -f /usr/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ] && source /usr/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh' >>~/.zshrc
+COPY --chown=elyro:elyro --chmod=0644 elyro.zshrc /home/elyro/.zshrc
 
 USER root
 WORKDIR /home/elyro/workspace

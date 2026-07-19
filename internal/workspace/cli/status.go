@@ -13,7 +13,7 @@ func newStatusCmd(opts *GlobalOptions) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "status",
-		Short: "Show the Elyro workspace status for the current project",
+		Short: "Show the current Workspace",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			projectDir, err := resolvedProjectDir(cmd, opts)
 			if err != nil {

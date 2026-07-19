@@ -24,52 +24,56 @@ func isInteractive(in io.Reader, out io.Writer) bool {
 	return stdinErr == nil && stdoutErr == nil && stdinInfo.Mode()&os.ModeCharDevice != 0 && stdoutInfo.Mode()&os.ModeCharDevice != 0
 }
 
-func promptEditorSelection(in io.Reader, out io.Writer, options []editor.Option) int {
+var errEditorSelectionCancelled = errors.New("editor selection cancelled")
+
+func promptEditorSelection(in io.Reader, out io.Writer, options []editor.Option) (int, error) {
 	if len(options) == 0 {
-		return -1
+		return -1, errors.New("no editor options available")
 	}
 
 	reader := bufio.NewReader(in)
-	maxChoice := len(options) + 1
 	for attempt := 0; attempt < 2; attempt++ {
 		fmt.Fprintln(out)
-		fmt.Fprintln(out, "Open editor now?")
-		for i, option := range options {
-			fmt.Fprintf(out, "  %d. %s\n", i+1, option.Label)
+		ui := cliui.New(out)
+		if err := ui.Question("Choose an editor [" + options[0].Label + "]"); err != nil {
+			return -1, err
 		}
-		fmt.Fprintf(out, "  %d. Skip\n", maxChoice)
-		fmt.Fprint(out, "Select an option and press Enter (default: Skip): ")
+		for i, option := range options {
+			fmt.Fprintf(out, "  %d  %s\n", i+1, option.Label)
+		}
+		fmt.Fprintln(out, "  q  Cancel")
+		if err := ui.Prompt("Select: "); err != nil {
+			return -1, err
+		}
 
 		line, err := reader.ReadString('\n')
 		if err != nil && !errors.Is(err, io.EOF) {
-			return -1
+			return -1, err
 		}
 		line = strings.TrimSpace(line)
 		if line == "" {
-			return -1
+			return 0, nil
+		}
+		if strings.EqualFold(line, "q") || strings.EqualFold(line, "cancel") {
+			return -1, errEditorSelectionCancelled
 		}
 
 		selected, convErr := strconv.Atoi(line)
-		if convErr == nil {
-			switch {
-			case selected >= 1 && selected <= len(options):
-				return selected - 1
-			case selected == maxChoice:
-				return -1
-			}
+		if convErr == nil && selected >= 1 && selected <= len(options) {
+			return selected - 1, nil
 		}
 
-		fmt.Fprintln(out, "Invalid selection.")
+		fmt.Fprintln(out, "Invalid selection; choose an editor number or q to cancel.")
 		if errors.Is(err, io.EOF) {
-			return -1
+			break
 		}
 	}
-	return -1
+	return -1, errors.New("invalid editor selection")
 }
 
 func printEditorOpenHelpHost(out io.Writer, hostAlias, remoteDir string) error {
 	ui := cliui.New(out)
-	if err := ui.Title("Open in editor"); err != nil {
+	if err := ui.Section("Open in editor"); err != nil {
 		return err
 	}
 	if err := ui.Fields(

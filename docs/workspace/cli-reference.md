@@ -45,6 +45,8 @@ elyro exec -- bash -lc 'go test ./... | tee /tmp/test.log'
 
 `shell` and `exec` require an existing Workspace. They never create, start, or replace one implicitly; call `elyro up` first.
 
+Official Toolchain images use a small native zsh prompt that identifies the Workspace and current Linux directory, for example `elyro:demo ~/demo ❯`. The prompt, directory listings, autosuggestions, and syntax highlighting use terminal color only in an interactive shell. Set `NO_COLOR` before `elyro shell`, or use `TERM=dumb`, for a plain prompt. Custom images continue to own their shell and prompt configuration.
+
 ## Machine-readable inspection
 
 ```bash
@@ -60,7 +62,7 @@ Doctor uses schema 2 with `kind`, `healthy`, an optional resolved `project`, and
 
 ## Terminal output
 
-Human-facing commands use restrained semantic color and short completion receipts when stdout is a terminal. Output is automatically plain when redirected, when `NO_COLOR` is non-empty, when `TERM=dumb`, or in CI. No color flag is required.
+Human-facing commands use restrained semantic color and short completion receipts when stdout is a terminal. Brand, section, question, command, progress, and result styles have separate roles so color never carries the only meaning. Output is automatically plain when redirected, when `NO_COLOR` is non-empty, when `TERM=dumb`, or in CI. No color flag is required.
 
 Machine contracts do not pass through the presentation layer: JSON stdout contains only JSON, `exec` and `shell` preserve command streams, and `skill show` prints the embedded source byte-for-byte.
 

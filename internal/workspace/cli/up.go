@@ -26,7 +26,7 @@ func newUpCmd(opts *GlobalOptions) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "up",
-		Short: "Start or reuse an Elyro workspace for the current project",
+		Short: "Start or reuse a Workspace",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			projectDir, err := resolvedProjectDir(cmd, opts)
 			if err != nil {
@@ -80,9 +80,6 @@ func newUpCmd(opts *GlobalOptions) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if err := stderrUI.Progress("Registering workspace"); err != nil {
-				return err
-			}
 			if err := writeWorkspaceRecord(result); err != nil {
 				return err
 			}
@@ -100,7 +97,6 @@ func newUpCmd(opts *GlobalOptions) *cobra.Command {
 				cliui.Field{Label: "toolchain", Value: displayToolchain(string(result.Environment.Toolchain))},
 				cliui.Field{Label: "platform", Value: result.Environment.Platform},
 				cliui.Field{Label: "project", Value: result.Project.ProjectDir},
-				cliui.Field{Label: "hostname", Value: result.Container.Hostname},
 			); err != nil {
 				return err
 			}

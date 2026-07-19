@@ -16,7 +16,9 @@ type Renderer struct {
 }
 
 type styles struct {
-	title    lipgloss.Style
+	brand    lipgloss.Style
+	section  lipgloss.Style
+	question lipgloss.Style
 	success  lipgloss.Style
 	warning  lipgloss.Style
 	failure  lipgloss.Style
@@ -46,12 +48,14 @@ func newRenderer(out io.Writer, color bool) Renderer {
 		out:   out,
 		color: color,
 		styles: styles{
-			title:    lipgloss.NewStyle().Bold(true).Foreground(lipgloss.BrightMagenta),
+			brand:    lipgloss.NewStyle().Bold(true).Foreground(lipgloss.BrightBlue),
+			section:  lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Blue),
+			question: lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Blue),
 			success:  lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Green),
 			warning:  lipgloss.NewStyle().Foreground(lipgloss.Yellow),
 			failure:  lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Red),
 			progress: lipgloss.NewStyle().Foreground(lipgloss.Cyan),
-			label:    lipgloss.NewStyle().Foreground(lipgloss.BrightBlack),
+			label:    lipgloss.NewStyle(),
 			command:  lipgloss.NewStyle().Foreground(lipgloss.Cyan),
 		},
 	}
@@ -59,8 +63,23 @@ func newRenderer(out io.Writer, color bool) Renderer {
 
 func (r Renderer) ColorEnabled() bool { return r.color }
 
-func (r Renderer) Title(text string) error {
-	_, err := fmt.Fprintln(r.out, r.render(r.styles.title, text))
+func (r Renderer) Brand(name, tagline string) error {
+	_, err := fmt.Fprintf(r.out, "%s %s\n", r.render(r.styles.brand, name+":"), tagline)
+	return err
+}
+
+func (r Renderer) Section(text string) error {
+	_, err := fmt.Fprintln(r.out, r.render(r.styles.section, text))
+	return err
+}
+
+func (r Renderer) Question(text string) error {
+	_, err := fmt.Fprintln(r.out, r.render(r.styles.question, "? "+text))
+	return err
+}
+
+func (r Renderer) Prompt(text string) error {
+	_, err := fmt.Fprint(r.out, r.render(r.styles.question, "› "+text))
 	return err
 }
 
@@ -109,7 +128,7 @@ func (r Renderer) Next(commands ...string) error {
 	if _, err := fmt.Fprintln(r.out); err != nil {
 		return err
 	}
-	if err := r.Title("Next"); err != nil {
+	if err := r.Section("Next"); err != nil {
 		return err
 	}
 	for _, command := range commands {

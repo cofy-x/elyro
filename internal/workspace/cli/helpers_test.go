@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -53,14 +54,17 @@ func TestFindElyroRepoRootUsesImagesLayout(t *testing.T) {
 	}
 }
 
-func TestPromptEditorSelectionDefaultSkip(t *testing.T) {
+func TestPromptEditorSelectionDefaultsToFirstEditor(t *testing.T) {
 	t.Parallel()
 
 	options := []editor.Option{{Label: "Cursor"}, {Label: "VS Code"}}
 	var out bytes.Buffer
-	got := promptEditorSelection(strings.NewReader("\n"), &out, options)
-	if got != -1 {
-		t.Fatalf("promptEditorSelection = %d, want -1", got)
+	got, err := promptEditorSelection(strings.NewReader("\n"), &out, options)
+	if err != nil || got != 0 {
+		t.Fatalf("promptEditorSelection = %d, %v; want 0, nil", got, err)
+	}
+	if !strings.Contains(out.String(), "Choose an editor [Cursor]") {
+		t.Fatalf("prompt output = %q", out.String())
 	}
 }
 
@@ -69,9 +73,9 @@ func TestPromptEditorSelectionValidChoice(t *testing.T) {
 
 	options := []editor.Option{{Label: "Cursor"}, {Label: "VS Code"}}
 	var out bytes.Buffer
-	got := promptEditorSelection(strings.NewReader("2\n"), &out, options)
-	if got != 1 {
-		t.Fatalf("promptEditorSelection = %d, want 1", got)
+	got, err := promptEditorSelection(strings.NewReader("2\n"), &out, options)
+	if err != nil || got != 1 {
+		t.Fatalf("promptEditorSelection = %d, %v; want 1, nil", got, err)
 	}
 }
 
@@ -80,12 +84,34 @@ func TestPromptEditorSelectionRetryInvalidChoice(t *testing.T) {
 
 	options := []editor.Option{{Label: "Cursor"}, {Label: "VS Code"}}
 	var out bytes.Buffer
-	got := promptEditorSelection(strings.NewReader("9\n1\n"), &out, options)
-	if got != 0 {
-		t.Fatalf("promptEditorSelection = %d, want 0", got)
+	got, err := promptEditorSelection(strings.NewReader("9\n1\n"), &out, options)
+	if err != nil || got != 0 {
+		t.Fatalf("promptEditorSelection = %d, %v; want 0, nil", got, err)
 	}
-	if !strings.Contains(out.String(), "Invalid selection.") {
+	if !strings.Contains(out.String(), "Invalid selection;") {
 		t.Fatalf("expected invalid selection prompt, got %q", out.String())
+	}
+}
+
+func TestPromptEditorSelectionCanCancel(t *testing.T) {
+	t.Parallel()
+
+	options := []editor.Option{{Label: "Cursor"}, {Label: "VS Code"}}
+	var out bytes.Buffer
+	got, err := promptEditorSelection(strings.NewReader("q\n"), &out, options)
+	if got != -1 || !errors.Is(err, errEditorSelectionCancelled) {
+		t.Fatalf("promptEditorSelection = %d, %v; want cancellation", got, err)
+	}
+}
+
+func TestPromptEditorSelectionRejectsRepeatedInvalidInput(t *testing.T) {
+	t.Parallel()
+
+	options := []editor.Option{{Label: "Cursor"}, {Label: "VS Code"}}
+	var out bytes.Buffer
+	got, err := promptEditorSelection(strings.NewReader("9\nnope\n"), &out, options)
+	if got != -1 || err == nil || !strings.Contains(err.Error(), "invalid editor selection") {
+		t.Fatalf("promptEditorSelection = %d, %v; want invalid selection", got, err)
 	}
 }
 

@@ -49,7 +49,7 @@ func Up(ctx context.Context, request UpRequest) (result UpResult, err error) {
 }
 
 func up(ctx context.Context, runtime containerRuntime, request UpRequest) (result UpResult, err error) {
-	reportProgress(request, "Resolving project and environment")
+	reportProgress(request, "Preparing Workspace")
 	projectCtx, err := resolveProject(request.ProjectDir, request.ContainerName, request.HostAlias)
 	if err != nil {
 		return UpResult{}, err
@@ -70,12 +70,11 @@ func up(ctx context.Context, runtime containerRuntime, request UpRequest) (resul
 		return UpResult{}, fmt.Errorf("unsafe workspace environment requires --allow-unsafe-environment: %s", strings.Join(unsafeReasons, "; "))
 	}
 
-	reportProgress(request, "Checking image "+resolvedEnvironment.Image)
 	imageAvailable := runtime.ImageExists(ctx, resolvedEnvironment.Image)
 	if !imageAvailable {
 		if resolvedEnvironment.Toolchain != "" && !resolvedEnvironment.CustomImage {
 			if puller, ok := runtime.(imagePuller); ok {
-				reportProgress(request, "Pulling image "+resolvedEnvironment.Image)
+				reportProgress(request, "Pulling "+workspaceImageDisplayName(resolvedEnvironment)+" Workspace image")
 				if pullErr := puller.Pull(ctx, resolvedEnvironment.Image, request.PullOutput); pullErr != nil {
 					return UpResult{}, imagePullError(resolvedEnvironment, pullErr)
 				}
@@ -108,7 +107,7 @@ func up(ctx context.Context, runtime containerRuntime, request UpRequest) (resul
 	normalizedMounts := workspace.NormalizeDockerMounts(resolvedEnvironment.Docker.Mounts)
 	privilegedLabel := fmt.Sprintf("%t", resolvedEnvironment.Docker.Privileged)
 
-	reportProgress(request, "Creating or starting the workspace container")
+	reportProgress(request, "Starting Workspace")
 	info, action, err := ensureContainer(ctx, runtime, projectCtx, resolvedEnvironment, publishes, normalizedPublishes, normalizedMounts, privilegedLabel, request.SSHPort, request.Recreate)
 	if err != nil {
 		return UpResult{}, err
@@ -120,11 +119,9 @@ func up(ctx context.Context, runtime containerRuntime, request UpRequest) (resul
 		_ = runtime.Remove(ctx, info.Name)
 	}()
 
-	reportProgress(request, "Waiting for SSH")
 	if err := runtime.WaitForSSHD(ctx, info.Name); err != nil {
 		return UpResult{}, err
 	}
-	reportProgress(request, "Configuring SSH access and workspace")
 	if err := access.InstallContainerSSHAccess(ctx, info.Name, publicKey); err != nil {
 		return UpResult{}, err
 	}
@@ -160,6 +157,21 @@ func up(ctx context.Context, runtime containerRuntime, request UpRequest) (resul
 		Published:       normalizedPublishes,
 		Mounts:          normalizedMounts,
 	}, nil
+}
+
+func workspaceImageDisplayName(environment workspace.ResolvedEnvironment) string {
+	switch environment.Toolchain {
+	case workspace.ToolchainPython:
+		return "Python"
+	case workspace.ToolchainGo:
+		return "Go"
+	case workspace.ToolchainJava:
+		return "Java"
+	case workspace.ToolchainNode:
+		return "Node.js"
+	default:
+		return "custom"
+	}
 }
 
 func reportProgress(request UpRequest, message string) {

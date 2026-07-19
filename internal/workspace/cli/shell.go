@@ -6,6 +6,8 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"os"
+	"strings"
 	"time"
 
 	elyroworkspace "github.com/cofy-x/elyro/internal/workspace"
@@ -15,7 +17,7 @@ import (
 func newShellCmd(opts *GlobalOptions) *cobra.Command {
 	return &cobra.Command{
 		Use:   "shell",
-		Short: "Open an interactive shell in the current workspace",
+		Short: "Open a Linux shell",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			record, err := currentWorkspace(cmd, opts)
@@ -36,7 +38,7 @@ func newShellCmd(opts *GlobalOptions) *cobra.Command {
 func newExecCmd(opts *GlobalOptions) *cobra.Command {
 	return &cobra.Command{
 		Use:   "exec -- COMMAND [ARG...]",
-		Short: "Run a command in the current workspace",
+		Short: "Run a command in Linux",
 		Args:  cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, command []string) error {
 			record, err := currentWorkspace(cmd, opts)
@@ -65,11 +67,18 @@ func newExecCmd(opts *GlobalOptions) *cobra.Command {
 }
 
 func dockerShellArgs(record elyroworkspace.Record) []string {
-	return []string{
-		"exec", "-it", "--user", "elyro", "--workdir", record.ContainerWorkspaceDir,
+	args := []string{"exec", "-it"}
+	if noColor := os.Getenv("NO_COLOR"); noColor != "" {
+		args = append(args, "--env", "NO_COLOR="+noColor)
+	}
+	if strings.EqualFold(os.Getenv("TERM"), "dumb") {
+		args = append(args, "--env", "TERM=dumb")
+	}
+	return append(args,
+		"--user", "elyro", "--workdir", record.ContainerWorkspaceDir,
 		record.ContainerName, "/bin/sh", "-c",
 		`shell="$(getent passwd elyro 2>/dev/null | awk -F: '{print $7}')"; [ -x "$shell" ] || shell=/bin/bash; exec "$shell" -l`,
-	}
+	)
 }
 
 func dockerExecArgs(record elyroworkspace.Record, pidFile string, command []string) []string {

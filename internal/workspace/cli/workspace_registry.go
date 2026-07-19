@@ -16,7 +16,7 @@ func newListCmd(opts *GlobalOptions) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "list",
-		Short: "List known local Elyro workspaces",
+		Short: "List local Workspaces",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			projectDir, err := resolvedProjectDir(cmd, opts)
 			if err != nil {
@@ -91,7 +91,7 @@ func printWorkspaceList(out io.Writer, items []workspaceListItem) error {
 		}
 		return ui.Next("elyro up")
 	}
-	if err := ui.Title("Workspaces"); err != nil {
+	if err := ui.Section("Workspaces"); err != nil {
 		return err
 	}
 	printed := false

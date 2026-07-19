@@ -78,8 +78,13 @@ func TestUpReportsProgressAndPreservesPullError(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "denied: token expired") {
 		t.Fatalf("up() error = %v", err)
 	}
-	if len(progress) < 3 || !strings.Contains(strings.Join(progress, "\n"), "Pulling image") {
-		t.Fatalf("progress = %#v", progress)
+	if got, want := strings.Join(progress, "\n"), "Preparing Workspace\nPulling Go Workspace image"; got != want {
+		t.Fatalf("progress = %q, want %q", got, want)
+	}
+	for _, implementationDetail := range []string{"SSH", "registry", "container", "Checking image"} {
+		if strings.Contains(strings.Join(progress, "\n"), implementationDetail) {
+			t.Fatalf("progress exposes %q: %#v", implementationDetail, progress)
+		}
 	}
 }
 

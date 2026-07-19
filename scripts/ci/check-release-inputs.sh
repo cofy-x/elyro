@@ -72,6 +72,12 @@ done
 first_from="$(awk '/^FROM / {print; exit}' images/workspace-base/Dockerfile)"
 [[ "${first_from}" == *'@sha256:'* ]] || fail "workspace-base Ubuntu image is not digest-pinned"
 [[ "${first_from#FROM }" == "${ELYRO_UBUNTU_IMAGE}" ]] || fail "Ubuntu digest differs from release/versions.env"
+for file in images/workspace-base/Dockerfile images/workspace-python/Dockerfile images/workspace-go/Dockerfile images/workspace-java/Dockerfile images/workspace-node/Dockerfile; do
+  require_line "${file}" "ARG DEBIAN_FRONTEND=noninteractive"
+  if grep -Eq '^ENV[[:space:]]+DEBIAN_FRONTEND=' "${file}"; then
+    fail "${file} exports build-only DEBIAN_FRONTEND at runtime"
+  fi
+done
 
 require_line images/workspace-go/Dockerfile "ARG GO_VERSION=${ELYRO_GO_VERSION}"
 require_line images/workspace-go/Dockerfile "ARG GO_SHA256_AMD64=${ELYRO_GO_SHA256_AMD64}"

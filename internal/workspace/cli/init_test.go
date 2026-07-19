@@ -84,4 +84,16 @@ func TestInitProjectInteractiveSelectionAndConfirmation(t *testing.T) {
 	if !strings.Contains(string(data), "toolchain: go") {
 		t.Fatalf("elyro.yaml = %q", data)
 	}
+	for _, text := range []string{
+		"! No project language was detected\n",
+		"? Choose a Toolchain\n",
+		"  1  Python\n  2  Go\n  3  Java\n  4  Node.js\n",
+		"› Select: ",
+		"› Create elyro.yaml with Toolchain Go? [y/N] ",
+		"✓ Created elyro.yaml\n",
+	} {
+		if !strings.Contains(out.String(), text) {
+			t.Fatalf("init output missing %q:\n%s", text, out.String())
+		}
+	}
 }

@@ -16,13 +16,21 @@ Type "elyro up --toolchain go"
 Enter
 Sleep 3s
 
-Type "elyro exec -- go version"
+Type "elyro shell"
 Enter
 Sleep 2s
 
-Type "elyro status"
+Type "pwd"
 Enter
-Sleep 3s
+Sleep 1s
+
+Type "go version"
+Enter
+Sleep 2s
+
+Type "exit"
+Enter
+Sleep 2s
 
 Type "elyro down"
 Enter

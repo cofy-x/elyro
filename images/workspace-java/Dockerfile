@@ -1,6 +1,7 @@
 ARG WORKSPACE_BASE_IMAGE=ghcr.io/cofy-x/elyro/workspace-base:v0.1.1
 FROM ${WORKSPACE_BASE_IMAGE}
 
+ARG DEBIAN_FRONTEND=noninteractive
 ARG ELYRO_PROXY_URL=
 ARG ELYRO_PROXY_NO_PROXY=localhost,127.0.0.1,::1,host.docker.internal,.local
 ARG GRADLE_VERSION=9.6.1

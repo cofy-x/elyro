@@ -14,7 +14,7 @@ func newDownCmd(opts *GlobalOptions) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "down",
-		Short: "Remove the current Elyro workspace and managed access",
+		Short: "Remove the current Workspace",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			projectDir, err := resolvedProjectDir(cmd, opts)
 			if err != nil {

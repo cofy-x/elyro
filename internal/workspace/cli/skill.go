@@ -22,7 +22,7 @@ type skillTarget struct {
 }
 
 func NewSkillCmd() *cobra.Command {
-	cmd := &cobra.Command{Use: "skill", Short: "Show or install the Elyro coding-agent skill", Args: cobra.NoArgs}
+	cmd := &cobra.Command{Use: "skill", Short: "Show or install the Elyro skill", Args: cobra.NoArgs}
 	cmd.AddCommand(newSkillShowCmd(), newSkillInstallCmd(), newSkillUninstallCmd())
 	return cmd
 }

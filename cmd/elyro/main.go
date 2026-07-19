@@ -47,16 +47,15 @@ func newRootCmd() *cobra.Command {
 func printCommandHelp(cmd *cobra.Command, _ []string) {
 	ui := cliui.New(cmd.OutOrStdout())
 	if cmd.Name() != "elyro" {
-		_ = ui.Title(cmd.CommandPath())
+		_ = ui.Section(cmd.CommandPath())
 		_ = ui.Text(cmd.Short)
 		_, _ = fmt.Fprintln(cmd.OutOrStdout())
 		_, _ = fmt.Fprint(cmd.OutOrStdout(), cmd.UsageString())
 		return
 	}
 
-	_ = ui.Title("Elyro")
-	_ = ui.Text("Edit on Mac. Build and test in Linux.")
-	_ = ui.Next("elyro up --open", "elyro exec -- go test ./...")
+	_ = ui.Brand("Elyro", "Edit on Mac. Build and test in Linux.")
+	_ = ui.Next("elyro up --open", "elyro exec -- <command>")
 	_, _ = fmt.Fprintln(cmd.OutOrStdout())
 	for _, group := range []struct {
 		title    string
@@ -64,10 +63,10 @@ func printCommandHelp(cmd *cobra.Command, _ []string) {
 	}{
 		{"Workspace", []string{"up", "down", "shell", "exec", "open", "status", "list"}},
 		{"Project", []string{"init"}},
-		{"Agent integration", []string{"skill"}},
+		{"Agent", []string{"skill"}},
 		{"Diagnostics", []string{"doctor", "version", "help"}},
 	} {
-		_ = ui.Title(group.title)
+		_ = ui.Section(group.title)
 		fields := make([]cliui.Field, 0, len(group.commands))
 		for _, name := range group.commands {
 			child, _, err := cmd.Find([]string{name})

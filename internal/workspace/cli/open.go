@@ -18,7 +18,7 @@ func newOpenCmd(opts *GlobalOptions) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "open",
-		Short: "Open the current Elyro workspace in an editor",
+		Short: "Open in Cursor or VS Code",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return openCurrentWorkspace(cmd, opts, editorName, printOnly)
 		},
@@ -49,6 +49,9 @@ func openCurrentWorkspace(cmd *cobra.Command, opts *GlobalOptions, editorName st
 	}
 	option, err := resolveEditorOption(cmd.InOrStdin(), cmd.OutOrStdout(), editorName, record.SSHAlias, record.ContainerWorkspaceDir)
 	if err != nil {
+		if errors.Is(err, errEditorSelectionCancelled) {
+			return cliui.New(cmd.OutOrStdout()).Warning("Editor opening cancelled")
+		}
 		_ = printEditorOpenHelpHost(cmd.OutOrStdout(), record.SSHAlias, record.ContainerWorkspaceDir)
 		return err
 	}
@@ -86,10 +89,11 @@ func resolveEditorOption(in io.Reader, out io.Writer, name, hostAlias, remoteDir
 		return editor.Option{}, errors.New("no supported editor binary found in PATH; install Cursor or VS Code, or use --print")
 	}
 	if isInteractive(in, out) && len(options) > 1 {
-		selected := promptEditorSelection(in, out, options)
-		if selected >= 0 {
-			return options[selected], nil
+		selected, err := promptEditorSelection(in, out, options)
+		if err != nil {
+			return editor.Option{}, err
 		}
+		return options[selected], nil
 	}
 	return options[0], nil
 }

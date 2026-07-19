@@ -23,11 +23,31 @@ func TestDockerExecPreservesArgumentBoundaries(t *testing.T) {
 }
 
 func TestDockerShellUsesElyroProjectDirectoryAndTTY(t *testing.T) {
+	t.Setenv("NO_COLOR", "")
+	t.Setenv("TERM", "xterm-256color")
 	record := workspace.Record{ContainerName: "container", ContainerWorkspaceDir: "/home/elyro/demo"}
 	got := dockerShellArgs(record)
 	for _, value := range []string{"-it", "--user", "elyro", "--workdir", "/home/elyro/demo", "container"} {
 		if !slices.Contains(got, value) {
 			t.Fatalf("docker shell args missing %q: %#v", value, got)
+		}
+	}
+}
+
+func TestDockerShellPassesOnlySupportedTerminalOverrides(t *testing.T) {
+	t.Setenv("NO_COLOR", "1")
+	t.Setenv("TERM", "dumb")
+	t.Setenv("COLORTERM", "truecolor")
+
+	got := dockerShellArgs(workspace.Record{ContainerName: "container", ContainerWorkspaceDir: "/home/elyro/demo"})
+	for _, value := range []string{"NO_COLOR=1", "TERM=dumb"} {
+		if !slices.Contains(got, value) {
+			t.Fatalf("docker shell args missing %q: %#v", value, got)
+		}
+	}
+	for _, value := range got {
+		if value == "COLORTERM=truecolor" || value == "TERM=xterm-256color" {
+			t.Fatalf("docker shell args pass unsupported host terminal value %q: %#v", value, got)
 		}
 	}
 }

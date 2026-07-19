@@ -2,16 +2,16 @@ package main
 
 import (
 	"bytes"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 )
 
-func TestRunInitConfiguresProjectWithoutAgentEnvironments(t *testing.T) {
+func TestRunInitConfiguresProjectWithoutRuntimePrerequisites(t *testing.T) {
 	configHome := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", configHome)
+	t.Setenv("PATH", t.TempDir())
 	projectDir := t.TempDir()
 	previousDir, err := os.Getwd()
 	if err != nil {
@@ -26,7 +26,7 @@ func TestRunInitConfiguresProjectWithoutAgentEnvironments(t *testing.T) {
 	}
 
 	var output bytes.Buffer
-	if err := runInit(strings.NewReader(""), &output, "", true, false, func(io.Writer) error { return nil }); err != nil {
+	if err := runInit(strings.NewReader(""), &output, "", true, false); err != nil {
 		t.Fatalf("runInit() error = %v", err)
 	}
 	data, err := os.ReadFile(filepath.Join(projectDir, "elyro.yaml"))
@@ -41,34 +41,5 @@ func TestRunInitConfiguresProjectWithoutAgentEnvironments(t *testing.T) {
 	}
 	if !strings.Contains(output.String(), "elyro up") {
 		t.Fatalf("runInit output missing next steps:\n%s", output.String())
-	}
-}
-
-func TestRunInitDoesNotWriteWhenPrerequisitesFail(t *testing.T) {
-	projectDir := t.TempDir()
-	previousDir, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chdir(projectDir); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = os.Chdir(previousDir) })
-
-	err = runInit(strings.NewReader(""), io.Discard, "go", true, false, func(io.Writer) error {
-		return io.ErrUnexpectedEOF
-	})
-	if err == nil {
-		t.Fatal("runInit() error = nil")
-	}
-	if _, statErr := os.Stat(filepath.Join(projectDir, "elyro.yaml")); !os.IsNotExist(statErr) {
-		t.Fatalf("elyro.yaml unexpectedly exists: %v", statErr)
-	}
-}
-
-func TestInitPrerequisiteCheckIncludesRepairSuggestion(t *testing.T) {
-	check := initPrerequisiteCheck("tool", "available", io.ErrUnexpectedEOF, "install the missing tool")
-	if check.Status != doctorStatusFail || !strings.Contains(check.Message, "install the missing tool") {
-		t.Fatalf("initPrerequisiteCheck() = %#v", check)
 	}
 }

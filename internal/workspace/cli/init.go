@@ -30,8 +30,7 @@ func InitProject(options InitProjectOptions) error {
 	reader := bufferedReader(options.In)
 	ui := cliui.New(options.Out)
 
-	configPath, err := workspace.ProjectConfigPath(options.ProjectDir)
-	if err != nil {
+	if _, err := workspace.ProjectConfigPath(options.ProjectDir); err != nil {
 		return err
 	}
 	if _, err := workspace.ValidateProjectConfigTarget(options.ProjectDir); err != nil {
@@ -46,7 +45,7 @@ func InitProject(options InitProjectOptions) error {
 		if !options.Interactive {
 			return errors.New("refusing to write elyro.yaml in a non-interactive session; pass --yes")
 		}
-		confirmed, err := promptConfirmation(reader, options.Out, fmt.Sprintf("Create %s with toolchain %s?", configPath, toolchain))
+		confirmed, err := promptConfirmation(reader, options.Out, fmt.Sprintf("Create elyro.yaml with Toolchain %s?", displayToolchainChoice(toolchain)))
 		if err != nil {
 			return err
 		}
@@ -59,7 +58,7 @@ func InitProject(options InitProjectOptions) error {
 	if err != nil {
 		return err
 	}
-	if err := ui.Success("Workspace configuration created"); err != nil {
+	if err := ui.Success("Created elyro.yaml"); err != nil {
 		return err
 	}
 	if err := ui.Fields(
@@ -97,14 +96,16 @@ func promptToolchainSelection(in io.Reader, out io.Writer, detected []workspace.
 			return "", err
 		}
 	}
-	if err := ui.Title("Choose a workspace toolchain"); err != nil {
+	if err := ui.Question("Choose a Toolchain"); err != nil {
 		return "", err
 	}
 	choices := []workspace.Toolchain{workspace.ToolchainPython, workspace.ToolchainGo, workspace.ToolchainJava, workspace.ToolchainNode}
 	for i, toolchain := range choices {
-		fmt.Fprintf(out, "  %d. %s\n", i+1, toolchain)
+		fmt.Fprintf(out, "  %d  %s\n", i+1, displayToolchainChoice(toolchain))
 	}
-	fmt.Fprint(out, "Select a toolchain: ")
+	if err := ui.Prompt("Select: "); err != nil {
+		return "", err
+	}
 	line, err := bufferedReader(in).ReadString('\n')
 	if err != nil && !errors.Is(err, io.EOF) {
 		return "", err
@@ -124,7 +125,9 @@ func promptToolchainSelection(in io.Reader, out io.Writer, detected []workspace.
 }
 
 func promptConfirmation(in io.Reader, out io.Writer, message string) (bool, error) {
-	fmt.Fprintf(out, "%s [y/N] ", message)
+	if err := cliui.New(out).Prompt(message + " [y/N] "); err != nil {
+		return false, err
+	}
 	line, err := bufferedReader(in).ReadString('\n')
 	if err != nil && !errors.Is(err, io.EOF) {
 		return false, err
@@ -134,6 +137,21 @@ func promptConfirmation(in io.Reader, out io.Writer, message string) (bool, erro
 		return true, nil
 	default:
 		return false, nil
+	}
+}
+
+func displayToolchainChoice(toolchain workspace.Toolchain) string {
+	switch toolchain {
+	case workspace.ToolchainPython:
+		return "Python"
+	case workspace.ToolchainGo:
+		return "Go"
+	case workspace.ToolchainJava:
+		return "Java"
+	case workspace.ToolchainNode:
+		return "Node.js"
+	default:
+		return string(toolchain)
 	}
 }
 

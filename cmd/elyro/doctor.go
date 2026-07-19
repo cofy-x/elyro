@@ -61,7 +61,7 @@ func newDoctorCmd() *cobra.Command {
 	var projectDir string
 	cmd := &cobra.Command{
 		Use:   "doctor",
-		Short: "Check Elyro system and project health",
+		Short: "Check system and project health",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			report := doctorReport(projectDir, cmd.Flags().Changed("project-dir"))
@@ -348,7 +348,7 @@ func printDoctorReport(out io.Writer, report doctorJSONView) error {
 				continue
 			}
 			if !printed {
-				if err := ui.Title(labels[scope]); err != nil {
+				if err := ui.Section(labels[scope]); err != nil {
 					return err
 				}
 				printed = true

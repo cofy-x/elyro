@@ -18,7 +18,7 @@ func newVersionCmd() *cobra.Command {
 	var outputJSON bool
 	cmd := &cobra.Command{
 		Use:   "version",
-		Short: "Print Elyro build version",
+		Short: "Show the installed version",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			view := versionView{
@@ -32,7 +32,7 @@ func newVersionCmd() *cobra.Command {
 				return encoder.Encode(view)
 			}
 			ui := cliui.New(cmd.OutOrStdout())
-			if err := ui.Title("Elyro " + view.Version); err != nil {
+			if err := ui.Section("Elyro " + view.Version); err != nil {
 				return err
 			}
 			return ui.Fields(

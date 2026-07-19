@@ -20,10 +20,13 @@ func TestRootHelpUsesStableGroupedLayout(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := out.String()
-	for _, text := range []string{"Elyro\n", "Workspace\n", "Project\n", "Agent integration\n", "Diagnostics\n", "elyro up --open"} {
+	for _, text := range []string{"Elyro: Edit on Mac. Build and test in Linux.\n", "Workspace\n", "Project\n", "Agent\n", "Diagnostics\n", "elyro up --open", "elyro exec -- <command>"} {
 		if !strings.Contains(got, text) {
 			t.Fatalf("help output does not contain %q:\n%s", text, got)
 		}
+	}
+	if strings.Contains(got, "go test ./...") {
+		t.Fatalf("help output contains a Toolchain-specific command:\n%s", got)
 	}
 	if strings.Contains(got, "\x1b[") {
 		t.Fatalf("buffered help contains ANSI escapes: %q", got)
