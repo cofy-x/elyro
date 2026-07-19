@@ -2,6 +2,20 @@
 
 All notable changes to Elyro are documented here. The project follows Semantic Versioning, and pre-1.0 releases may contain intentional breaking changes.
 
+## [0.1.1] - 2026-07-19
+
+### Changed
+
+- Project-scoped commands now resolve the nearest `elyro.yaml`, then a containing registered Workspace, then the nearest Git root, so subdirectory commands share one deliberate project identity.
+- `elyro doctor` now provides project-aware grouped diagnostics and a schema-2 JSON contract with structured project resolution and scoped checks.
+- `elyro up --recreate` now replaces a running or stopped Workspace after completing all non-destructive preflight checks.
+- Added the complete `elyro.yaml` configuration reference and documented selection, precedence, safety, editor, port, mount, and custom-image behavior.
+
+### Fixed
+
+- Prevented commands run from nested project directories from reporting or creating a different accidental Workspace.
+- Added an explicit recovery path for custom images rebuilt under an unchanged tag.
+
 ## [0.1.0] - 2026-07-18
 
 The first Elyro release establishes a Mac-first, local-first Linux Workspace for individual developers and host coding agents.

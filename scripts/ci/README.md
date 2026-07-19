@@ -14,6 +14,6 @@
 ```bash
 scripts/ci/run-suite.sh pr
 scripts/ci/run-suite.sh nightly
-scripts/ci/check-release-inputs.sh v0.1.0
+scripts/ci/check-release-inputs.sh v0.1.1
 make release-install-smoke
 ```

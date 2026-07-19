@@ -23,7 +23,7 @@ help:
 	@echo "  make ci-suite ELYRO_CI_SUITE_MODE=pr|nightly|weekly|all"
 	@echo ""
 	@echo "Workspace images:"
-	@echo "  make image-report VERSION=v0.1.0 [COMPARE_VERSION=<previous-version>]"
+	@echo "  make image-report VERSION=v0.1.1 [COMPARE_VERSION=<previous-version>]"
 	@echo "  make workspace-base-image-build"
 	@echo "  make workspace-python-image-build"
 	@echo "  make workspace-go-image-build"
