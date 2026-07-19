@@ -16,6 +16,10 @@ func newDownCmd(opts *GlobalOptions) *cobra.Command {
 		Use:   "down",
 		Short: "Remove the current Elyro workspace and managed access",
 		RunE: func(cmd *cobra.Command, _ []string) error {
+			projectDir, err := resolvedProjectDir(cmd, opts)
+			if err != nil {
+				return err
+			}
 			ui := cliui.New(cmd.OutOrStdout())
 			sshConfigPath, err := expandSSHConfigPath(opts.SSHConfigPath)
 			if err != nil {
@@ -24,7 +28,7 @@ func newDownCmd(opts *GlobalOptions) *cobra.Command {
 
 			ctx := context.Background()
 			result, err := local.Down(ctx, local.DownRequest{
-				ProjectDir:    opts.ProjectDir,
+				ProjectDir:    projectDir,
 				SSHConfigPath: sshConfigPath,
 			})
 			if err != nil {

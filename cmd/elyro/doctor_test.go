@@ -3,46 +3,87 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"strings"
 	"testing"
+
+	"github.com/cofy-x/elyro/internal/workspace"
+	"github.com/cofy-x/elyro/internal/workspace/local"
+	dockerruntime "github.com/cofy-x/elyro/internal/workspace/runtime/docker"
 )
 
-func TestPrintDoctorChecksAllowsOptionalFailures(t *testing.T) {
+func TestDoctorJSONSchemaTwo(t *testing.T) {
 	var output bytes.Buffer
-	err := printDoctorChecks(&output, "Elyro doctor:", []doctorCheck{
-		{name: "docker", required: true},
-		{name: "workspace registry", required: false, err: errors.New("none configured")},
-	})
-	if err != nil {
-		t.Fatalf("printDoctorChecks() error = %v, want optional warning", err)
+	report := doctorJSONView{
+		SchemaVersion: 2,
+		Kind:          "doctor",
+		Healthy:       true,
+		Project:       &doctorProjectView{Root: "/tmp/demo", Source: workspace.ProjectRootSourceGit, WorkspaceStatus: "absent"},
+		Checks: []doctorCheck{{
+			Scope: "system", Name: "docker_cli", Status: doctorStatusOK, Message: "Docker CLI is available",
+		}},
 	}
-	if got := output.String(); !strings.Contains(got, "! workspace registry: none configured") {
-		t.Fatalf("doctor output = %q, want optional warning", got)
-	}
-}
-
-func TestDoctorJSONSchema(t *testing.T) {
-	var output bytes.Buffer
-	view := doctorJSONView{SchemaVersion: 1, Healthy: true, Checks: []doctorJSONCheck{{Name: "docker", Status: "ok", Required: true}}}
-	if err := json.NewEncoder(&output).Encode(view); err != nil {
+	if err := writeDoctorJSON(&output, report); err != nil {
 		t.Fatal(err)
 	}
-	var got doctorJSONView
+	var got map[string]any
 	if err := json.Unmarshal(output.Bytes(), &got); err != nil {
 		t.Fatal(err)
 	}
-	if got.SchemaVersion != 1 || !got.Healthy || len(got.Checks) != 1 {
+	if got["schema_version"] != float64(2) || got["kind"] != "doctor" || got["healthy"] != true {
 		t.Fatalf("doctor JSON = %#v", got)
+	}
+	checks := got["checks"].([]any)
+	check := checks[0].(map[string]any)
+	if _, ok := check["required"]; ok {
+		t.Fatalf("doctor check retained removed required field: %#v", check)
+	}
+	if check["scope"] != "system" || check["status"] != "ok" || check["message"] == "" {
+		t.Fatalf("doctor check = %#v", check)
 	}
 }
 
-func TestPrintDoctorChecksRejectsRequiredFailure(t *testing.T) {
+func TestDoctorReportHealthFollowsFailures(t *testing.T) {
+	report := doctorJSONView{SchemaVersion: 2, Kind: "doctor", Healthy: true}
+	report.add(doctorCheck{Scope: "editor", Name: "supported_editor", Status: doctorStatusWarn, Message: "optional"})
+	if !report.Healthy {
+		t.Fatal("warning made report unhealthy")
+	}
+	report.add(doctorCheck{Scope: "project", Name: "workspace_configuration", Status: doctorStatusFail, Message: "invalid"})
+	if report.Healthy {
+		t.Fatal("failure left report healthy")
+	}
+}
+
+func TestPrintDoctorReportGroupsScopes(t *testing.T) {
 	var output bytes.Buffer
-	err := printDoctorChecks(&output, "Elyro doctor:", []doctorCheck{
-		{name: "docker", required: true, err: errors.New("not found")},
-	})
-	if err == nil {
-		t.Fatal("printDoctorChecks() succeeded, want required failure")
+	report := doctorJSONView{Healthy: true, Checks: []doctorCheck{
+		{Scope: "system", Name: "docker_cli", Status: doctorStatusOK, Message: "available"},
+		{Scope: "project", Name: "project_root", Status: doctorStatusWarn, Message: "fallback"},
+	}}
+	if err := printDoctorReport(&output, report); err != nil {
+		t.Fatal(err)
+	}
+	got := output.String()
+	for _, want := range []string{"System", "✓ docker cli: available", "Project", "! project root: fallback"} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("doctor output %q does not contain %q", got, want)
+		}
+	}
+}
+
+func TestWorkspaceSpecificationMatchesResolvedEnvironment(t *testing.T) {
+	project := workspace.ProjectContext{ProjectDir: "/tmp/demo", Slug: "demo", MountDir: "/home/elyro/demo"}
+	environment := workspace.ResolvedEnvironment{Name: "go", Toolchain: workspace.ToolchainGo, Image: "example.invalid/go:v1", Platform: "linux/arm64"}
+	info := &dockerruntime.Container{
+		ProjectDir: project.ProjectDir, Hostname: project.Slug, Environment: environment.Name,
+		Toolchain: string(environment.Toolchain), Image: environment.Image, ImageLabel: environment.Image,
+		Platform: environment.Platform, Privileged: "false",
+	}
+	if !local.ContainerSpecificationMatches(info, project, environment, "", "", "false") {
+		t.Fatal("matching workspace specification was rejected")
+	}
+	info.ImageLabel = "example.invalid/other:v1"
+	if local.ContainerSpecificationMatches(info, project, environment, "", "", "false") {
+		t.Fatal("mismatched image was accepted")
 	}
 }

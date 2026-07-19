@@ -91,6 +91,12 @@ workspace_down() {
   local project_dir="$1"
 
   "${BIN}" down --project-dir "${project_dir}" >/dev/null
+  assert_workspace_removed "${project_dir}"
+}
+
+assert_workspace_removed() {
+  local project_dir="$1"
+
   if [ -n "$(container_for_project "${project_dir}")" ]; then
     printf '[workspace-e2e] workspace container remains after down: %s\n' "${project_dir}" >&2
     return 1
@@ -217,7 +223,7 @@ run_python_case() {
 }
 
 run_go_case() {
-  local project_dir host_alias port container_id exec_status
+  local project_dir host_alias port container_id recreated_container_id exec_status nested_dir root_id nested_id
 
   project_dir="$(copy_example go-http-service)"
   port="$(find_free_port)"
@@ -238,6 +244,23 @@ run_go_case() {
   container_id="$(container_for_project "${project_dir}")"
   test -n "${container_id}"
   docker exec "${container_id}" bash -lc 'go version >/dev/null && ! command -v golangci-lint'
+
+  nested_dir="${project_dir}/internal/http"
+  mkdir -p "${nested_dir}"
+  root_id="$("${BIN}" status --project-dir "${project_dir}" --json | jq -r '.workspace.id')"
+  nested_id="$(cd "${nested_dir}" && "${BIN}" status --json | jq -r '.workspace.id')"
+  test "${nested_id}" = "${root_id}"
+  (cd "${nested_dir}" && "${BIN}" doctor --json) | \
+    jq -e --arg root "${project_dir}" '.schema_version == 2 and .healthy == true and .project.root == $root and .project.source == "registry"' >/dev/null
+  (cd "${nested_dir}" && "${BIN}" exec -- /usr/local/go/bin/go version) >/dev/null
+
+  log "go example: recreate from nested directory"
+  (cd "${nested_dir}" && "${BIN}" up --recreate --publish "${port}:8000" --json) | \
+    jq -e '.action == "recreated" and .workspace.status == "running"' >/dev/null
+  recreated_container_id="$(container_for_project "${project_dir}")"
+  test -n "${recreated_container_id}"
+  test "${recreated_container_id}" != "${container_id}"
+
   start_workspace_service "${project_dir}" "${TMP_ROOT}/go-service.log" \
     env APP_GREETING="hello from go e2e" go run .
   wait_http "http://127.0.0.1:${port}/healthz" 40
@@ -260,7 +283,8 @@ run_go_case() {
   stop_workspace_service
 
   log "go example: workspace down"
-  workspace_down "${project_dir}"
+  (cd "${nested_dir}" && "${BIN}" down) >/dev/null
+  assert_workspace_removed "${project_dir}"
 }
 
 run_node_case() {
@@ -318,7 +342,7 @@ EOF
 }
 
 run_environment_case() {
-  local project_dir host_alias port container_id config_tmp platform arch image_prefix base_image docker_context
+  local project_dir host_alias port container_id recreated_container_id config_tmp platform arch image_prefix base_image docker_context
 
   project_dir="$(copy_example go-custom-image-environment)"
   port="$(find_free_port)"
@@ -365,7 +389,18 @@ run_environment_case() {
 
   container_id="$(container_for_project "${project_dir}")"
   test -n "${container_id}"
-  docker exec "${container_id}" bash -lc 'elyro-example-tool | grep -Fq elyro-example-tool'
+
+  log "environment example: recreate custom image with unchanged tag"
+  "${BIN}" up \
+    --environment api \
+    --project-dir "${project_dir}" \
+    --publish "${port}:8000" \
+    --recreate \
+    --json | jq -e '.action == "recreated"' >/dev/null
+  recreated_container_id="$(container_for_project "${project_dir}")"
+  test -n "${recreated_container_id}"
+  test "${recreated_container_id}" != "${container_id}"
+  docker exec "${recreated_container_id}" bash -lc 'elyro-example-tool | grep -Fq elyro-example-tool'
   start_workspace_service "${project_dir}" "${TMP_ROOT}/environment-service.log" \
     go run .
   wait_http "http://127.0.0.1:${port}/healthz" 40

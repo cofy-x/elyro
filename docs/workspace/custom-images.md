@@ -86,8 +86,7 @@ the same tag does not replace an already running Workspace; recreate it explicit
 
 ```bash
 docker build -t my-project-workspace:local -f .elyro/Dockerfile .
-elyro down
-elyro up
+elyro up --recreate
 ```
 
 Start with the verified [from-scratch Ubuntu example](../../examples/workspace/custom-image-from-scratch/README.md). The existing [custom environment example](../../examples/workspace/go-custom-image-environment/README.md) demonstrates the alternative path of extending an official Elyro image.

@@ -66,9 +66,9 @@ func TestRunInitDoesNotWriteWhenPrerequisitesFail(t *testing.T) {
 	}
 }
 
-func TestInitPrerequisiteErrorIncludesRepairSuggestion(t *testing.T) {
-	err := initPrerequisiteError(io.ErrUnexpectedEOF, "install the missing tool")
-	if err == nil || !strings.Contains(err.Error(), "install the missing tool") {
-		t.Fatalf("initPrerequisiteError() = %v", err)
+func TestInitPrerequisiteCheckIncludesRepairSuggestion(t *testing.T) {
+	check := initPrerequisiteCheck("tool", "available", io.ErrUnexpectedEOF, "install the missing tool")
+	if check.Status != doctorStatusFail || !strings.Contains(check.Message, "install the missing tool") {
+		t.Fatalf("initPrerequisiteCheck() = %#v", check)
 	}
 }

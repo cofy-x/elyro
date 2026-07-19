@@ -33,12 +33,13 @@ func TestDisplayUpEnvironment(t *testing.T) {
 func TestDisplayUpAction(t *testing.T) {
 	t.Parallel()
 
-	for action, want := range map[string]string{
-		"created": "created",
-		"started": "started",
-		"reused":  "reused",
-		"":        "ready",
-		"unknown": "ready",
+	for action, want := range map[local.WorkspaceAction]string{
+		local.WorkspaceActionCreated:     "created",
+		local.WorkspaceActionRecreated:   "recreated",
+		local.WorkspaceActionStarted:     "started",
+		local.WorkspaceActionReused:      "reused",
+		local.WorkspaceAction(""):        "ready",
+		local.WorkspaceAction("unknown"): "ready",
 	} {
 		if got := displayUpAction(action); got != want {
 			t.Fatalf("displayUpAction(%q) = %q, want %q", action, got, want)
@@ -50,7 +51,7 @@ func TestUpPayloadUsesWorkspaceSchema(t *testing.T) {
 	view := upPayload(local.UpResult{
 		Project:   workspace.ProjectContext{ProjectDir: "/tmp/demo", Slug: "demo", ProjectHash: "deadbeef", MountDir: "/home/elyro/demo"},
 		Container: dockerruntime.Container{ID: "abc", Name: "elyro-workspace-demo", Status: "running", Hostname: "demo", Toolchain: "go", Platform: "linux/arm64"},
-		Action:    "created",
+		Action:    local.WorkspaceActionCreated,
 	}, 1250*time.Millisecond)
 	data, err := json.Marshal(view)
 	if err != nil {

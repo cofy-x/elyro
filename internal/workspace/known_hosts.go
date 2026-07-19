@@ -55,6 +55,18 @@ func RemoveKnownSSHHost(path, alias string) error {
 	return writeFileWithParents(path, strings.TrimLeft(removeKnownHostBlock(content, alias), "\n"))
 }
 
+func ValidateKnownSSHHost(path, alias, containerID string) error {
+	content, err := readSSHConfig(path)
+	if err != nil {
+		return err
+	}
+	registeredID, keys := knownHostBlock(content, alias)
+	if registeredID != containerID || strings.TrimSpace(keys) == "" {
+		return fmt.Errorf("managed known-host entry for %s is missing or differs from the running Workspace", alias)
+	}
+	return nil
+}
+
 func scanSSHHostKeys(ctx context.Context, host, port string) (string, error) {
 	deadline := time.Now().Add(10 * time.Second)
 	for {

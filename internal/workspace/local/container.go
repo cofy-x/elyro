@@ -8,20 +8,22 @@ import (
 	dockerruntime "github.com/cofy-x/elyro/internal/workspace/runtime/docker"
 )
 
-func ensureContainer(ctx context.Context, runtime containerRuntime, projectCtx workspace.ProjectContext, environment workspace.ResolvedEnvironment, publishes []workspace.PortPublish, normalizedPublishes, normalizedMounts, privilegedLabel, sshPort string) (*dockerruntime.Container, string, error) {
+func ensureContainer(ctx context.Context, runtime containerRuntime, projectCtx workspace.ProjectContext, environment workspace.ResolvedEnvironment, publishes []workspace.PortPublish, normalizedPublishes, normalizedMounts, privilegedLabel, sshPort string, recreate bool) (*dockerruntime.Container, WorkspaceAction, error) {
 	info, err := runtime.InspectByProject(ctx, projectCtx.ProjectDir)
 	if err != nil {
 		return nil, "", err
 	}
 
-	if info != nil {
-		currentEnvironment := displayEnvironment(info.Environment, info.Toolchain)
-		currentImage := info.ImageLabel
-		if currentImage == "" {
-			currentImage = info.Image
+	recreating := recreate && info != nil
+	if recreating {
+		if err := runtime.Remove(ctx, info.Name); err != nil {
+			return nil, "", err
 		}
-		currentPlatform := displayPlatform(info.Platform)
-		if currentEnvironment != environment.Name || currentImage != environment.Image || currentPlatform != environment.Platform || info.Hostname != projectCtx.Slug || info.Published != normalizedPublishes || info.Privileged != privilegedLabel || info.Mounts != normalizedMounts {
+		info = nil
+	}
+
+	if info != nil {
+		if !ContainerSpecificationMatches(info, projectCtx, environment, normalizedPublishes, normalizedMounts, privilegedLabel) {
 			if err := runtime.Remove(ctx, info.Name); err != nil {
 				return nil, "", err
 			}
@@ -34,12 +36,12 @@ func ensureContainer(ctx context.Context, runtime containerRuntime, projectCtx w
 			if err != nil {
 				return nil, "", err
 			}
-			return info, "started", nil
+			return info, WorkspaceActionStarted, nil
 		}
 	}
 
 	if info != nil {
-		return info, "reused", nil
+		return info, WorkspaceActionReused, nil
 	}
 
 	occupied, err := runtime.InspectByName(ctx, projectCtx.ContainerName)
@@ -61,7 +63,27 @@ func ensureContainer(ctx context.Context, runtime containerRuntime, projectCtx w
 		_ = runtime.Remove(ctx, projectCtx.ContainerName)
 		return nil, "", err
 	}
-	return info, "created", nil
+	if recreating {
+		return info, WorkspaceActionRecreated, nil
+	}
+	return info, WorkspaceActionCreated, nil
+}
+
+func ContainerSpecificationMatches(info *dockerruntime.Container, projectCtx workspace.ProjectContext, environment workspace.ResolvedEnvironment, normalizedPublishes, normalizedMounts, privilegedLabel string) bool {
+	if info == nil {
+		return false
+	}
+	currentImage := info.ImageLabel
+	if currentImage == "" {
+		currentImage = info.Image
+	}
+	return displayEnvironment(info.Environment, info.Toolchain) == environment.Name &&
+		currentImage == environment.Image &&
+		displayPlatform(info.Platform) == environment.Platform &&
+		info.Hostname == projectCtx.Slug &&
+		info.Published == normalizedPublishes &&
+		info.Privileged == privilegedLabel &&
+		info.Mounts == normalizedMounts
 }
 
 func displayEnvironment(environment, toolchain string) string {

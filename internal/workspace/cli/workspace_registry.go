@@ -18,11 +18,15 @@ func newListCmd(opts *GlobalOptions) *cobra.Command {
 		Use:   "list",
 		Short: "List known local Elyro workspaces",
 		RunE: func(cmd *cobra.Command, _ []string) error {
+			projectDir, err := resolvedProjectDir(cmd, opts)
+			if err != nil {
+				return err
+			}
 			store, _, err := loadWorkspaceStore()
 			if err != nil {
 				return err
 			}
-			current, currentOK := currentWorkspaceFromStore(store, opts.ProjectDir)
+			current, currentOK := currentWorkspaceFromStore(store, projectDir)
 			items, err := liveWorkspaceItems(context.Background(), store.Workspaces, current, currentOK)
 			if err != nil {
 				return err

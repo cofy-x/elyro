@@ -15,6 +15,9 @@ elyro down
 
 `elyro init` creates `elyro.yaml` for named Environments and advanced settings. Without configuration, `up` detects a single Python, Go, Node.js, or Java Toolchain and writes no project file.
 
+When `--project-dir` is omitted, Elyro uses the nearest `elyro.yaml`, then an existing containing Workspace, then the nearest Git root. This keeps every project-scoped command on the same Workspace when it runs from a subdirectory.
+
 - [CLI reference](cli-reference.md)
+- [Workspace configuration](configuration.md)
 - [Custom images](custom-images.md)
 - [Coding-agent workflow](../coding-agents.md)

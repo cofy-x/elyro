@@ -30,7 +30,7 @@ Elyro does not install, authenticate, run, or proxy a coding agent. The bundled 
 - Fixed Workspace images for Python, Go, Node.js, and Java, plus a documented custom-image contract.
 - Direct, argv-safe Linux execution through `elyro exec`; shell syntax is explicit with `bash -lc`.
 - Editor handoff over managed Remote SSH with strict, isolated host-key trust.
-- Small schema-1 JSON contracts for automation: `up`, `down`, `doctor`, `status`, and `list`.
+- Small machine contracts for automation: schema 1 for Workspace lifecycle and inspection, plus scoped schema-2 diagnostics.
 - Calm terminal receipts with useful next steps for people, while pipes, CI, and JSON remain stable for agents.
 
 ## Start
@@ -76,6 +76,7 @@ An Elyro Workspace is a development environment, not a security sandbox. Elyro d
 - [Installation](docs/installation.md)
 - [Why Elyro](docs/why-elyro.md)
 - [Workspace guide](docs/workspace/README.md)
+- [Workspace configuration](docs/workspace/configuration.md)
 - [CLI reference](docs/workspace/cli-reference.md)
 - [Custom images](docs/workspace/custom-images.md)
 - [Coding agents](docs/coding-agents.md)

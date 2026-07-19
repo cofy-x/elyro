@@ -110,7 +110,7 @@ func Upsert(store Store, record Record) (Store, error) {
 	replaced := false
 	for i := range store.Workspaces {
 		item := store.Workspaces[i]
-		if item.Kind == normalized.Kind && item.ProjectDir == normalized.ProjectDir {
+		if item.Kind == normalized.Kind && physicalPath(item.ProjectDir) == physicalPath(normalized.ProjectDir) {
 			store.Workspaces[i] = normalized
 			replaced = true
 			break
@@ -147,7 +147,7 @@ func RemoveFile(path, projectDir string) error {
 	workspaces := store.Workspaces[:0]
 	removed := false
 	for _, record := range store.Workspaces {
-		if record.Kind == KindWorkspace && physicalPath(record.ProjectDir) == projectDir {
+		if record.Kind == KindWorkspace && physicalPath(record.ProjectDir) == physicalPath(projectDir) {
 			removed = true
 			continue
 		}
@@ -257,7 +257,7 @@ func cleanAbs(path string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return physicalPath(abs), nil
+	return filepath.Clean(abs), nil
 }
 
 func pathContains(parent, child string) bool {

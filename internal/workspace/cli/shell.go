@@ -18,7 +18,7 @@ func newShellCmd(opts *GlobalOptions) *cobra.Command {
 		Short: "Open an interactive shell in the current workspace",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			record, err := currentWorkspace(opts)
+			record, err := currentWorkspace(cmd, opts)
 			if err != nil {
 				return err
 			}
@@ -39,7 +39,7 @@ func newExecCmd(opts *GlobalOptions) *cobra.Command {
 		Short: "Run a command in the current workspace",
 		Args:  cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, command []string) error {
-			record, err := currentWorkspace(opts)
+			record, err := currentWorkspace(cmd, opts)
 			if err != nil {
 				return err
 			}
@@ -115,12 +115,16 @@ rm -f "$pid_file"
 	return runStreamingIO(ctx, "", nil, nil, nil, "docker", "exec", "--user", "0", containerName, "/bin/sh", "-c", script, "elyro-exec-cleanup", pidFile, mode)
 }
 
-func currentWorkspace(opts *GlobalOptions) (elyroworkspace.Record, error) {
+func currentWorkspace(cmd *cobra.Command, opts *GlobalOptions) (elyroworkspace.Record, error) {
+	projectDir, err := resolvedProjectDir(cmd, opts)
+	if err != nil {
+		return elyroworkspace.Record{}, err
+	}
 	store, _, err := loadWorkspaceStore()
 	if err != nil {
 		return elyroworkspace.Record{}, err
 	}
-	record, err := elyroworkspace.Current(store, opts.ProjectDir)
+	record, err := elyroworkspace.Current(store, projectDir)
 	if err != nil {
 		if errors.Is(err, elyroworkspace.ErrNoCurrent) {
 			return elyroworkspace.Record{}, errors.New("no current workspace found; run `elyro up` from this project first")

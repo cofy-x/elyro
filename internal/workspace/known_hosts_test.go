@@ -47,6 +47,12 @@ func TestPrepareKnownSSHHostLifecycle(t *testing.T) {
 	if err := prepareKnownSSHHost(t.Context(), path, "elyro-demo", "container-1", "127.0.0.1", "2222", scan); err != nil {
 		t.Fatal(err)
 	}
+	if err := ValidateKnownSSHHost(path, "elyro-demo", "container-1"); err != nil {
+		t.Fatalf("ValidateKnownSSHHost returned error: %v", err)
+	}
+	if err := ValidateKnownSSHHost(path, "elyro-demo", "other-container"); err == nil {
+		t.Fatal("ValidateKnownSSHHost accepted a mismatched container")
+	}
 	if err := prepareKnownSSHHost(t.Context(), path, "elyro-demo", "container-1", "127.0.0.1", "2222", scan); err != nil {
 		t.Fatalf("idempotent registration failed: %v", err)
 	}

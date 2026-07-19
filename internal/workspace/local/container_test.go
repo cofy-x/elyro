@@ -18,11 +18,11 @@ func TestEnsureContainerReusesRunningContainer(t *testing.T) {
 		byProject: testContainer(project, environment, "running"),
 	}
 
-	info, action, err := ensureContainer(ctx, runtime, project, environment, nil, "", "", "false", "")
+	info, action, err := ensureContainer(ctx, runtime, project, environment, nil, "", "", "false", "", false)
 	if err != nil {
 		t.Fatalf("ensureContainer() error = %v", err)
 	}
-	if action != "reused" {
+	if action != WorkspaceActionReused {
 		t.Fatalf("ensureContainer() action = %q, want reused", action)
 	}
 	if info.Name != project.ContainerName {
@@ -46,11 +46,11 @@ func TestEnsureContainerStartsStoppedContainer(t *testing.T) {
 		},
 	}
 
-	info, action, err := ensureContainer(ctx, runtime, project, environment, nil, "", "", "false", "")
+	info, action, err := ensureContainer(ctx, runtime, project, environment, nil, "", "", "false", "", false)
 	if err != nil {
 		t.Fatalf("ensureContainer() error = %v", err)
 	}
-	if action != "started" {
+	if action != WorkspaceActionStarted {
 		t.Fatalf("ensureContainer() action = %q, want started", action)
 	}
 	if info.Status != "running" {
@@ -76,11 +76,11 @@ func TestEnsureContainerRebuildsMismatchedContainer(t *testing.T) {
 		},
 	}
 
-	_, action, err := ensureContainer(ctx, runtime, project, environment, nil, "", "", "false", "")
+	_, action, err := ensureContainer(ctx, runtime, project, environment, nil, "", "", "false", "", false)
 	if err != nil {
 		t.Fatalf("ensureContainer() error = %v", err)
 	}
-	if action != "created" {
+	if action != WorkspaceActionCreated {
 		t.Fatalf("ensureContainer() action = %q, want created", action)
 	}
 	if !slices.Equal(runtime.removes, []string{project.ContainerName}) {
@@ -88,6 +88,71 @@ func TestEnsureContainerRebuildsMismatchedContainer(t *testing.T) {
 	}
 	if len(runtime.runs) != 1 {
 		t.Fatalf("runs = %v, want one docker run", runtime.runs)
+	}
+}
+
+func TestEnsureContainerRecreatesMatchingContainerWhenRequested(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	project := testProjectContext()
+	environment := testResolvedEnvironment()
+	runtime := &fakeContainerRuntime{
+		byProject: testContainer(project, environment, "running"),
+		inspect: map[string]*dockerruntime.Container{
+			project.ContainerName: testContainer(project, environment, "running"),
+		},
+	}
+
+	_, action, err := ensureContainer(ctx, runtime, project, environment, nil, "", "", "false", "", true)
+	if err != nil {
+		t.Fatalf("ensureContainer() error = %v", err)
+	}
+	if action != WorkspaceActionRecreated {
+		t.Fatalf("ensureContainer() action = %q, want recreated", action)
+	}
+	if !slices.Equal(runtime.removes, []string{project.ContainerName}) || len(runtime.runs) != 1 {
+		t.Fatalf("recreate mutations: removes=%v runs=%v", runtime.removes, runtime.runs)
+	}
+}
+
+func TestEnsureContainerRecreateActionCoversExistingAndAbsentWorkspaces(t *testing.T) {
+	t.Parallel()
+
+	project := testProjectContext()
+	environment := testResolvedEnvironment()
+	for _, test := range []struct {
+		name       string
+		existing   *dockerruntime.Container
+		wantAction WorkspaceAction
+		wantRemove bool
+	}{
+		{name: "stopped", existing: testContainer(project, environment, "exited"), wantAction: WorkspaceActionRecreated, wantRemove: true},
+		{name: "mismatched", existing: func() *dockerruntime.Container {
+			container := testContainer(project, environment, "running")
+			container.ImageLabel = "elyro/workspace-python:old"
+			return container
+		}(), wantAction: WorkspaceActionRecreated, wantRemove: true},
+		{name: "absent", wantAction: WorkspaceActionCreated},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			runtime := &fakeContainerRuntime{
+				byProject: test.existing,
+				inspect: map[string]*dockerruntime.Container{
+					project.ContainerName: testContainer(project, environment, "running"),
+				},
+			}
+			_, action, err := ensureContainer(t.Context(), runtime, project, environment, nil, "", "", "false", "", true)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if action != test.wantAction {
+				t.Fatalf("action = %q, want %q", action, test.wantAction)
+			}
+			if got := len(runtime.removes) == 1; got != test.wantRemove {
+				t.Fatalf("removed existing container = %t, want %t", got, test.wantRemove)
+			}
+		})
 	}
 }
 
@@ -104,7 +169,7 @@ func TestEnsureContainerRejectsContainerNameOwnedByOtherProject(t *testing.T) {
 		},
 	}
 
-	_, _, err := ensureContainer(ctx, runtime, project, environment, nil, "", "", "false", "")
+	_, _, err := ensureContainer(ctx, runtime, project, environment, nil, "", "", "false", "", false)
 	if err == nil {
 		t.Fatal("ensureContainer() error = nil, want conflict")
 	}

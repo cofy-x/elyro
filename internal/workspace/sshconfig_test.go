@@ -27,6 +27,14 @@ func TestUpsertManagedSSHHost(t *testing.T) {
 	if err := UpsertManagedSSHHost(path, entry); err != nil {
 		t.Fatalf("UpsertManagedSSHHost returned error: %v", err)
 	}
+	if err := ValidateManagedSSHHostEntry(path, entry); err != nil {
+		t.Fatalf("ValidateManagedSSHHostEntry returned error: %v", err)
+	}
+	changed := entry
+	changed.Port = "2201"
+	if err := ValidateManagedSSHHostEntry(path, changed); err == nil {
+		t.Fatal("ValidateManagedSSHHostEntry accepted a mismatched port")
+	}
 	if err := UpsertManagedSSHHost(path, entry); err != nil {
 		t.Fatalf("UpsertManagedSSHHost second pass returned error: %v", err)
 	}

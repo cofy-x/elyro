@@ -1,6 +1,9 @@
 package cli
 
-import "github.com/spf13/cobra"
+import (
+	"github.com/cofy-x/elyro/internal/workspace"
+	"github.com/spf13/cobra"
+)
 
 type GlobalOptions struct {
 	ProjectDir    string
@@ -22,4 +25,12 @@ func NewWorkspaceCommands() []*cobra.Command {
 		command.Flags().StringVar(&opts.ProjectDir, "project-dir", ".", "Project directory to mount into the workspace")
 	}
 	return commands
+}
+
+func resolvedProjectDir(cmd *cobra.Command, opts *GlobalOptions) (string, error) {
+	root, err := workspace.ResolveProjectRoot(opts.ProjectDir, cmd.Flags().Changed("project-dir"))
+	if err != nil {
+		return "", err
+	}
+	return root.Dir, nil
 }

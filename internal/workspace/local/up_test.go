@@ -44,19 +44,23 @@ func TestUpMissingCustomImageSuggestsBuildOrPullWithoutPulling(t *testing.T) {
 			if err := os.WriteFile(filepath.Join(projectDir, "elyro.yaml"), config, 0o644); err != nil {
 				t.Fatal(err)
 			}
-			runtime := &fakeContainerRuntime{imageExists: false}
+			runtime := &fakeContainerRuntime{imageExists: false, byProject: &dockerruntime.Container{Name: "existing-workspace"}}
 
 			_, err := up(t.Context(), runtime, UpRequest{
 				ProjectDir:          projectDir,
 				SSHConfigPath:       "/tmp/ssh-config",
 				Environment:         "custom",
 				EnvironmentExplicit: true,
+				Recreate:            true,
 			})
 			if err == nil || !strings.Contains(err.Error(), "build or pull it first") {
 				t.Fatalf("up() error = %v, want custom image build-or-pull hint", err)
 			}
 			if len(runtime.pulls) != 0 {
 				t.Fatalf("custom image pulls = %#v, want none", runtime.pulls)
+			}
+			if len(runtime.removes) != 0 {
+				t.Fatalf("preflight failure removed existing workspace: %#v", runtime.removes)
 			}
 		})
 	}

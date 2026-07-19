@@ -29,11 +29,15 @@ func newOpenCmd(opts *GlobalOptions) *cobra.Command {
 }
 
 func openCurrentWorkspace(cmd *cobra.Command, opts *GlobalOptions, editorName string, printOnly bool) error {
+	projectDir, err := resolvedProjectDir(cmd, opts)
+	if err != nil {
+		return err
+	}
 	store, _, err := loadWorkspaceStore()
 	if err != nil {
 		return err
 	}
-	record, err := elyroworkspace.Current(store, opts.ProjectDir)
+	record, err := elyroworkspace.Current(store, projectDir)
 	if err != nil {
 		if errors.Is(err, elyroworkspace.ErrNoCurrent) {
 			return errors.New("no current workspace found; run `elyro up` from this project first")

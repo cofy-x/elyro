@@ -114,6 +114,43 @@ func TestCurrentSelectsNearestParentWorkspace(t *testing.T) {
 	}
 }
 
+func TestRegistryPreservesDeclaredPathWhileMatchingPhysicalPath(t *testing.T) {
+	realRoot := t.TempDir()
+	linkParent := t.TempDir()
+	linkedRoot := filepath.Join(linkParent, "project")
+	if err := os.Symlink(realRoot, linkedRoot); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(t.TempDir(), "workspaces.json")
+	if err := UpsertFile(path, Record{Name: "project", ProjectDir: linkedRoot, HostWorkspaceDir: linkedRoot}); err != nil {
+		t.Fatal(err)
+	}
+	store, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if store.Workspaces[0].ProjectDir != linkedRoot {
+		t.Fatalf("stored project dir = %q, want declared path %q", store.Workspaces[0].ProjectDir, linkedRoot)
+	}
+	resolved, err := Current(store, realRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resolved.ProjectDir != linkedRoot {
+		t.Fatalf("resolved project dir = %q, want declared path %q", resolved.ProjectDir, linkedRoot)
+	}
+	if err := RemoveFile(path, realRoot); err != nil {
+		t.Fatal(err)
+	}
+	store, err = Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(store.Workspaces) != 0 {
+		t.Fatalf("physical-path removal left records: %#v", store.Workspaces)
+	}
+}
+
 func TestCurrentMissing(t *testing.T) {
 	store := Store{SchemaVersion: 1, Workspaces: []Record{
 		{Name: "other", Kind: KindWorkspace, ProjectDir: t.TempDir(), HostWorkspaceDir: t.TempDir()},

@@ -30,6 +30,20 @@ func ValidateManagedSSHHost(path, alias string) error {
 	return nil
 }
 
+func ValidateManagedSSHHostEntry(path string, entry SSHHostEntry) error {
+	if err := ValidateManagedSSHHost(path, entry.HostAlias); err != nil {
+		return err
+	}
+	content, err := readSSHConfig(path)
+	if err != nil {
+		return err
+	}
+	if !strings.Contains(content, buildManagedBlock(entry)) {
+		return fmt.Errorf("managed SSH configuration for %s is missing or differs from the running Workspace", entry.HostAlias)
+	}
+	return nil
+}
+
 func UpsertManagedSSHHost(path string, entry SSHHostEntry) error {
 	if strings.TrimSpace(entry.HostAlias) == "" {
 		return fmt.Errorf("ssh host alias must not be empty")

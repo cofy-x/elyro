@@ -27,6 +27,7 @@ type UpRequest struct {
 	PlatformExplicit       bool
 	SSHPort                string
 	PublishSpecs           []string
+	Recreate               bool
 	PullOutput             io.Writer
 	Progress               func(string)
 }
@@ -37,7 +38,7 @@ type UpResult struct {
 	Container       dockerruntime.Container
 	SSHConfigPath   string
 	IdentityFile    string
-	Action          string
+	Action          WorkspaceAction
 	PrivilegedLabel string
 	Published       string
 	Mounts          string
@@ -108,12 +109,12 @@ func up(ctx context.Context, runtime containerRuntime, request UpRequest) (resul
 	privilegedLabel := fmt.Sprintf("%t", resolvedEnvironment.Docker.Privileged)
 
 	reportProgress(request, "Creating or starting the workspace container")
-	info, action, err := ensureContainer(ctx, runtime, projectCtx, resolvedEnvironment, publishes, normalizedPublishes, normalizedMounts, privilegedLabel, request.SSHPort)
+	info, action, err := ensureContainer(ctx, runtime, projectCtx, resolvedEnvironment, publishes, normalizedPublishes, normalizedMounts, privilegedLabel, request.SSHPort, request.Recreate)
 	if err != nil {
 		return UpResult{}, err
 	}
 	defer func() {
-		if err == nil || action != "created" {
+		if err == nil || !action.CreatedContainer() {
 			return
 		}
 		_ = runtime.Remove(ctx, info.Name)

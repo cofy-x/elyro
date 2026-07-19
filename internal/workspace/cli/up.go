@@ -22,11 +22,16 @@ func newUpCmd(opts *GlobalOptions) *cobra.Command {
 	var openEditor bool
 	var editorName string
 	var outputJSON bool
+	var recreate bool
 
 	cmd := &cobra.Command{
 		Use:   "up",
 		Short: "Start or reuse an Elyro workspace for the current project",
 		RunE: func(cmd *cobra.Command, _ []string) error {
+			projectDir, err := resolvedProjectDir(cmd, opts)
+			if err != nil {
+				return err
+			}
 			stdoutUI := cliui.New(cmd.OutOrStdout())
 			stderrUI := cliui.New(cmd.ErrOrStderr())
 			if cmd.Flags().Changed("editor") && !openEditor {
@@ -43,7 +48,7 @@ func newUpCmd(opts *GlobalOptions) *cobra.Command {
 			ctx, cancel := signalContext()
 			defer cancel()
 			request := local.UpRequest{
-				ProjectDir:             opts.ProjectDir,
+				ProjectDir:             projectDir,
 				SSHConfigPath:          sshConfigPath,
 				IdentityFile:           access.DefaultWorkspaceIdentityFile,
 				AllowUnsafeEnvironment: allowUnsafeEnvironment,
@@ -54,6 +59,7 @@ func newUpCmd(opts *GlobalOptions) *cobra.Command {
 				EnvironmentExplicit:    cmd.Flags().Changed("environment"),
 				PlatformExplicit:       cmd.Flags().Changed("platform"),
 				PublishSpecs:           publishSpecs,
+				Recreate:               recreate,
 				PullOutput:             cmd.ErrOrStderr(),
 				Progress: func(message string) {
 					_ = stderrUI.Progress(message)
@@ -116,24 +122,25 @@ func newUpCmd(opts *GlobalOptions) *cobra.Command {
 	cmd.Flags().BoolVar(&openEditor, "open", false, "Open the workspace in an editor after it is ready")
 	cmd.Flags().StringVar(&editorName, "editor", "", "Editor to open with --open: cursor or code")
 	cmd.Flags().BoolVar(&outputJSON, "json", false, "Print the workspace result as JSON")
+	cmd.Flags().BoolVar(&recreate, "recreate", false, "Recreate an existing workspace before starting")
 	return cmd
 }
 
-func displayUpAction(action string) string {
+func displayUpAction(action local.WorkspaceAction) string {
 	switch action {
-	case "created", "started", "reused":
-		return action
+	case local.WorkspaceActionCreated, local.WorkspaceActionRecreated, local.WorkspaceActionStarted, local.WorkspaceActionReused:
+		return string(action)
 	default:
 		return "ready"
 	}
 }
 
 type upJSONView struct {
-	SchemaVersion int               `json:"schema_version"`
-	Kind          string            `json:"kind"`
-	Action        string            `json:"action"`
-	DurationMS    int64             `json:"duration_ms"`
-	Workspace     workspaceJSONView `json:"workspace"`
+	SchemaVersion int                   `json:"schema_version"`
+	Kind          string                `json:"kind"`
+	Action        local.WorkspaceAction `json:"action"`
+	DurationMS    int64                 `json:"duration_ms"`
+	Workspace     workspaceJSONView     `json:"workspace"`
 }
 
 func upPayload(result local.UpResult, duration time.Duration) upJSONView {

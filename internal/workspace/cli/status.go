@@ -15,10 +15,14 @@ func newStatusCmd(opts *GlobalOptions) *cobra.Command {
 		Use:   "status",
 		Short: "Show the Elyro workspace status for the current project",
 		RunE: func(cmd *cobra.Command, _ []string) error {
+			projectDir, err := resolvedProjectDir(cmd, opts)
+			if err != nil {
+				return err
+			}
 			ui := cliui.New(cmd.OutOrStdout())
 			ctx := context.Background()
 			result, err := local.Status(ctx, local.StatusRequest{
-				ProjectDir: opts.ProjectDir,
+				ProjectDir: projectDir,
 			})
 			if err != nil {
 				return err

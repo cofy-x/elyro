@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/cofy-x/elyro/internal/workspace"
 	workspacecli "github.com/cofy-x/elyro/internal/workspace/cli"
 	"github.com/spf13/cobra"
 )
@@ -19,10 +20,14 @@ func newInitCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			in := cmd.InOrStdin()
 			out := cmd.OutOrStdout()
+			root, err := workspace.ResolveProjectRoot(projectDir, cmd.Flags().Changed("project-dir"))
+			if err != nil {
+				return err
+			}
 			return runInitAt(
 				in,
 				out,
-				projectDir,
+				root.Dir,
 				toolchain,
 				yes,
 				isTerminalFile(stdinFile(in)) && isTerminalFile(stdoutFile(out)),
@@ -61,17 +66,22 @@ func runInitPrerequisites(out io.Writer) error {
 	if dockerErr == nil {
 		dockerDaemonErr = checkDockerDaemon()
 	}
-	checks := []doctorCheck{
-		{name: "docker", required: true, err: initPrerequisiteError(dockerErr, "install Docker and ensure `docker` is in PATH")},
-		{name: "ssh", required: true, err: initPrerequisiteError(sshErr, "install an OpenSSH client and ensure `ssh` is in PATH")},
-		{name: "docker daemon", required: true, err: initPrerequisiteError(dockerDaemonErr, "start Docker and verify that `docker info` succeeds")},
+	report := doctorJSONView{SchemaVersion: 2, Kind: "doctor", Healthy: true}
+	report.add(initPrerequisiteCheck("docker_cli", "Docker CLI is available", dockerErr, "install Docker and ensure `docker` is in PATH"))
+	report.add(initPrerequisiteCheck("ssh_cli", "OpenSSH client is available", sshErr, "install an OpenSSH client and ensure `ssh` is in PATH"))
+	report.add(initPrerequisiteCheck("docker_daemon", "Docker daemon is reachable", dockerDaemonErr, "start Docker and verify that `docker info` succeeds"))
+	if err := printDoctorReport(out, report); err != nil {
+		return err
 	}
-	return printDoctorChecks(out, "Elyro init prerequisites:", checks)
+	if !report.Healthy {
+		return fmt.Errorf("one or more checks failed")
+	}
+	return nil
 }
 
-func initPrerequisiteError(err error, suggestion string) error {
+func initPrerequisiteCheck(name, success string, err error, suggestion string) doctorCheck {
 	if err == nil {
-		return nil
+		return doctorCheck{Scope: "system", Name: name, Status: doctorStatusOK, Message: success}
 	}
-	return fmt.Errorf("%v; %s", err, suggestion)
+	return doctorCheck{Scope: "system", Name: name, Status: doctorStatusFail, Message: fmt.Sprintf("%v; %s", err, suggestion)}
 }
