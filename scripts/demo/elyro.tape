@@ -10,27 +10,23 @@ Set TypingSpeed 35ms
 
 Type "cd /tmp/elyro-terminal-demo"
 Enter
-Sleep 1s
+Sleep 800ms
+
+Type "elyro up --dry-run --toolchain go"
+Enter
+Sleep 2200ms
 
 Type "elyro up --toolchain go"
 Enter
-Sleep 3s
+Sleep 3200ms
 
-Type "elyro shell"
+Type "elyro exec -- uname -s"
 Enter
-Sleep 2s
+Sleep 2200ms
 
-Type "pwd"
+Type "elyro down --dry-run"
 Enter
-Sleep 1s
-
-Type "go version"
-Enter
-Sleep 2s
-
-Type "exit"
-Enter
-Sleep 2s
+Sleep 2200ms
 
 Type "elyro down"
 Enter

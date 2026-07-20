@@ -15,7 +15,9 @@ elyro shell
 elyro exec -- go test ./...
 ```
 
-![Elyro terminal workflow](docs/assets/elyro-demo.gif)
+![Animated terminal demo of Elyro previewing, creating, using, previewing removal, and removing a Linux Workspace](docs/assets/elyro-demo.gif)
+
+If animation is unavailable, the equivalent static workflow is `elyro up --dry-run`, `elyro up`, `elyro exec -- <command>`, `elyro down --dry-run`, then `elyro down`.
 
 Elyro is also designed as a stable execution tool for a host coding agent:
 
@@ -132,6 +134,6 @@ make workspace-e2e
 make ci-pr-smoke
 ```
 
-The terminal demo is generated from [`scripts/demo/elyro.tape`](scripts/demo/elyro.tape) with `make demo-record`; it uses a real local Workspace rather than mocked output.
+The terminal demo is generated from [`scripts/demo/elyro.tape`](scripts/demo/elyro.tape) with `make demo-record`; it uses a real local Workspace rather than mocked output. Its temporary project path is generic so the recording does not expose a local username or repository path.
 
 Elyro is licensed under Apache-2.0. Product names and trademarks belong to their respective owners; interoperability does not imply endorsement.
