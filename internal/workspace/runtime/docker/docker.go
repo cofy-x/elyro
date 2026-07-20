@@ -10,34 +10,36 @@ import (
 )
 
 const (
-	LabelManaged        = "elyro.workspace.managed=true"
-	LabelToolchainKey   = "elyro.workspace.toolchain"
-	LabelEnvironmentKey = "elyro.workspace.environment"
-	LabelImageKey       = "elyro.workspace.image"
-	LabelPlatformKey    = "elyro.workspace.platform"
-	LabelProjectKey     = "elyro.workspace.project_dir"
-	LabelAliasKey       = "elyro.workspace.host_alias"
-	LabelPublishKey     = "elyro.workspace.publish"
-	LabelPrivileged     = "elyro.workspace.privileged"
-	LabelMountsKey      = "elyro.workspace.mounts"
+	LabelManaged                  = "elyro.workspace.managed=true"
+	LabelToolchainKey             = "elyro.workspace.toolchain"
+	LabelEnvironmentKey           = "elyro.workspace.environment"
+	LabelImageKey                 = "elyro.workspace.image"
+	LabelPlatformKey              = "elyro.workspace.platform"
+	LabelProjectKey               = "elyro.workspace.project_dir"
+	LabelAliasKey                 = "elyro.workspace.host_alias"
+	LabelPublishKey               = "elyro.workspace.publish"
+	LabelPrivileged               = "elyro.workspace.privileged"
+	LabelMountsKey                = "elyro.workspace.mounts"
+	LabelRuntimeEnvironmentDigest = "elyro.workspace.runtime_environment_digest"
 )
 
 type Container struct {
-	ID          string
-	Name        string
-	Image       string
-	Status      string
-	Hostname    string
-	Toolchain   string
-	Environment string
-	ImageLabel  string
-	Platform    string
-	ProjectDir  string
-	HostAlias   string
-	HostPort    string
-	Published   string
-	Privileged  string
-	Mounts      string
+	ID                       string
+	Name                     string
+	Image                    string
+	Status                   string
+	Hostname                 string
+	Toolchain                string
+	Environment              string
+	ImageLabel               string
+	Platform                 string
+	ProjectDir               string
+	HostAlias                string
+	HostPort                 string
+	Published                string
+	Privileged               string
+	Mounts                   string
+	RuntimeEnvironmentDigest string
 }
 
 func InspectByProject(ctx context.Context, projectDir string) (*Container, error) {
@@ -89,7 +91,7 @@ func InspectByName(ctx context.Context, name string) (*Container, error) {
 }
 
 func Inspect(ctx context.Context, idOrName string) (*Container, error) {
-	format := "{{.Id}}\t{{.Name}}\t{{.Config.Image}}\t{{.State.Status}}\t{{.Config.Hostname}}\t{{index .Config.Labels \"" + LabelToolchainKey + "\"}}\t{{index .Config.Labels \"" + LabelEnvironmentKey + "\"}}\t{{index .Config.Labels \"" + LabelImageKey + "\"}}\t{{index .Config.Labels \"" + LabelPlatformKey + "\"}}\t{{index .Config.Labels \"" + LabelProjectKey + "\"}}\t{{index .Config.Labels \"" + LabelAliasKey + "\"}}\t{{with (index .NetworkSettings.Ports \"22/tcp\")}}{{(index . 0).HostPort}}{{end}}\t{{index .Config.Labels \"" + LabelPublishKey + "\"}}\t{{index .Config.Labels \"" + LabelPrivileged + "\"}}\t{{index .Config.Labels \"" + LabelMountsKey + "\"}}"
+	format := "{{.Id}}\t{{.Name}}\t{{.Config.Image}}\t{{.State.Status}}\t{{.Config.Hostname}}\t{{index .Config.Labels \"" + LabelToolchainKey + "\"}}\t{{index .Config.Labels \"" + LabelEnvironmentKey + "\"}}\t{{index .Config.Labels \"" + LabelImageKey + "\"}}\t{{index .Config.Labels \"" + LabelPlatformKey + "\"}}\t{{index .Config.Labels \"" + LabelProjectKey + "\"}}\t{{index .Config.Labels \"" + LabelAliasKey + "\"}}\t{{with (index .NetworkSettings.Ports \"22/tcp\")}}{{(index . 0).HostPort}}{{end}}\t{{index .Config.Labels \"" + LabelPublishKey + "\"}}\t{{index .Config.Labels \"" + LabelPrivileged + "\"}}\t{{index .Config.Labels \"" + LabelMountsKey + "\"}}\t{{with (index .Config.Labels \"" + LabelRuntimeEnvironmentDigest + "\")}}{{.}}{{end}}"
 	output, err := runOutput(ctx, "docker", "inspect", "--format", format, idOrName)
 	if err != nil {
 		return nil, err
@@ -111,25 +113,26 @@ func WaitForSSHD(ctx context.Context, containerName string) error {
 
 func parseInspectOutput(idOrName, output string) (*Container, error) {
 	fields := strings.Split(strings.TrimRight(output, "\r\n"), "\t")
-	if len(fields) < 15 {
+	if len(fields) < 16 {
 		return nil, fmt.Errorf("unexpected docker inspect output for %s", idOrName)
 	}
 	return &Container{
-		ID:          fields[0],
-		Name:        strings.TrimPrefix(fields[1], "/"),
-		Image:       fields[2],
-		Status:      fields[3],
-		Hostname:    fields[4],
-		Toolchain:   fields[5],
-		Environment: fields[6],
-		ImageLabel:  fields[7],
-		Platform:    fields[8],
-		ProjectDir:  fields[9],
-		HostAlias:   fields[10],
-		HostPort:    fields[11],
-		Published:   fields[12],
-		Privileged:  fields[13],
-		Mounts:      fields[14],
+		ID:                       fields[0],
+		Name:                     strings.TrimPrefix(fields[1], "/"),
+		Image:                    fields[2],
+		Status:                   fields[3],
+		Hostname:                 fields[4],
+		Toolchain:                fields[5],
+		Environment:              fields[6],
+		ImageLabel:               fields[7],
+		Platform:                 fields[8],
+		ProjectDir:               fields[9],
+		HostAlias:                fields[10],
+		HostPort:                 fields[11],
+		Published:                fields[12],
+		Privileged:               fields[13],
+		Mounts:                   fields[14],
+		RuntimeEnvironmentDigest: fields[15],
 	}, nil
 }
 

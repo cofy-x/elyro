@@ -36,6 +36,49 @@ func TestResolveEnvironmentStrictlyParsesImageBuild(t *testing.T) {
 	}
 }
 
+func TestResolveEnvironmentStrictlyParsesRuntimeEnvironment(t *testing.T) {
+	t.Parallel()
+	for _, docker := range []string{
+		"environment: null\n",
+		"environment: []\n",
+		"environment:\n        VALUE: true\n",
+		"environment:\n        VALUE: 1\n",
+		"environment:\n        VALUE: null\n",
+		"environment:\n        VALUE: one\n        VALUE: two\n",
+		"env_files: null\n",
+		"env_files: {}\n",
+		"env_files:\n        - true\n",
+		"env_files:\n        - 1\n",
+	} {
+		projectDir := t.TempDir()
+		config := "version: 1\ndefault_environment: dev\nenvironments:\n  dev:\n    toolchain: go\n    docker:\n      " + docker
+		if err := os.WriteFile(filepath.Join(projectDir, "elyro.yaml"), []byte(config), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := ResolveEnvironment(projectDir, "/home/elyro/demo", EnvironmentSelection{}); err == nil {
+			t.Fatalf("ResolveEnvironment accepted invalid runtime environment:\n%s", config)
+		}
+	}
+}
+
+func TestResolveEnvironmentRejectsUnknownRuntimeEnvironmentField(t *testing.T) {
+	t.Parallel()
+	projectDir := t.TempDir()
+	writeEnvironmentConfig(t, projectDir, `
+environments:
+  dev:
+    toolchain: go
+    docker:
+      environment:
+        VALUE: valid
+      env_file: .elyro/dev.env
+`)
+	_, err := ResolveEnvironment(projectDir, "/home/elyro/demo", EnvironmentSelection{})
+	if err == nil || !strings.Contains(err.Error(), "field env_file not found") {
+		t.Fatalf("error = %v, want strict unknown-field rejection", err)
+	}
+}
+
 func TestResolveEnvironmentRequiresImageForBuild(t *testing.T) {
 	t.Parallel()
 	projectDir := t.TempDir()

@@ -125,7 +125,7 @@ func up(ctx context.Context, runtime containerRuntime, request UpRequest) (resul
 	if err := runtime.WaitForSSHD(ctx, info.Name); err != nil {
 		return UpResult{}, err
 	}
-	if err := access.InstallContainerSSHAccess(ctx, info.Name, publicKey); err != nil {
+	if err := access.InstallContainerSSHAccess(ctx, info.Name, publicKey, resolvedEnvironment.Docker.RuntimeEnvironment.Effective); err != nil {
 		return UpResult{}, err
 	}
 	knownHostsFile := workspace.DefaultKnownHostsFile()

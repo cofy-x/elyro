@@ -135,6 +135,34 @@ func TestImageBuildFailureDoesNotInspectOrChangeWorkspace(t *testing.T) {
 	}
 }
 
+func TestImageBuildDoesNotReadRuntimeEnvironmentFiles(t *testing.T) {
+	project := imageBuildTestProject(t)
+	configPath := filepath.Join(project, "elyro.yaml")
+	config := readTestFile(t, configPath) + "    docker:\n      env_files:\n        - .elyro/missing-at-runtime.env\n"
+	if err := os.WriteFile(configPath, []byte(config), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	originalRun := runImageBuild
+	originalStatus := imageBuildWorkspaceStatus
+	t.Cleanup(func() { runImageBuild = originalRun; imageBuildWorkspaceStatus = originalStatus })
+	called := false
+	runImageBuild = func(context.Context, string, io.Reader, io.Writer, ...string) error {
+		called = true
+		return nil
+	}
+	imageBuildWorkspaceStatus = func(context.Context, string) (bool, error) { return false, nil }
+	cmd := newImageBuildCmd()
+	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
+	cmd.SetArgs([]string{"--project-dir", project, "--json"})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("image build read a runtime-only env file: %v", err)
+	}
+	if !called {
+		t.Fatal("image build runner was not called")
+	}
+}
+
 func imageBuildTestProject(t *testing.T) string {
 	t.Helper()
 	project := t.TempDir()

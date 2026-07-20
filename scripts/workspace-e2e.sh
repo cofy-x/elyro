@@ -4,13 +4,15 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 WORKSPACE_EXAMPLES_DIR="${ELYRO_WORKSPACE_EXAMPLES_DIR:-${ROOT_DIR}/examples/workspace}"
 BIN="${ELYRO_WORKSPACE_E2E_BIN:-${ROOT_DIR}/bin/elyro}"
+ELYRO_VERSION="${ELYRO_WORKSPACE_E2E_VERSION:-dev}"
 TMP_ROOT="${ELYRO_WORKSPACE_E2E_TMP_ROOT:-$(mktemp -d /tmp/elyro-workspace-e2e.XXXXXX)}"
+TMP_ROOT="$(cd "${TMP_ROOT}" && pwd -P)"
 RUN_ID="${ELYRO_WORKSPACE_E2E_RUN_ID:-$(date +%s)-$$}"
 HOST_HOME="${HOME}"
 export HOME="${TMP_ROOT}/home"
 export DOCKER_CONFIG="${DOCKER_CONFIG:-${HOST_HOME}/.docker}"
 SSH_CONFIG="${HOME}/.ssh/config"
-CASES="${ELYRO_WORKSPACE_E2E_CASES:-python go node java environment image}"
+CASES="${ELYRO_WORKSPACE_E2E_CASES:-python go node java environment image runtime-environment}"
 CUSTOM_IMAGE="elyro/workspace-e2e-custom:${RUN_ID}"
 PROJECT_IMAGE="elyro/workspace-e2e-project:${RUN_ID}"
 WORKSPACE_EXEC_PID=""
@@ -153,6 +155,7 @@ cleanup() {
     "${TMP_ROOT}/go-http-service" \
     "${TMP_ROOT}/go-custom-image-environment" \
     "${TMP_ROOT}/go-project-image" \
+    "${TMP_ROOT}/go-runtime-environment" \
     "${TMP_ROOT}/node-test" \
     "${TMP_ROOT}/java-test"; do
     if [ -d "${project_dir}" ]; then
@@ -176,7 +179,9 @@ build_workspace() {
     cd "${ROOT_DIR}"
     # Isolate Elyro state below the temporary HOME without relocating Go's
     # read-only module cache into a directory that this test must delete.
-    HOME="${HOST_HOME}" go build -o "${BIN}" ./cmd/elyro
+    HOME="${HOST_HOME}" go build \
+      -ldflags "-X github.com/cofy-x/elyro/internal/version.Version=${ELYRO_VERSION}" \
+      -o "${BIN}" ./cmd/elyro
   )
 }
 
@@ -493,6 +498,83 @@ run_project_image_case() {
   workspace_down "${project_dir}"
 }
 
+run_runtime_environment_case() {
+  local project_dir nested_dir host_alias first_container second_container report
+  local sentinel_file="runtime-file-sentinel-${RUN_ID}"
+  local sentinel_inline="runtime-inline-sentinel-${RUN_ID}"
+
+  project_dir="$(copy_example go-runtime-environment)"
+  nested_dir="${project_dir}/internal/e2e/nested"
+  mkdir -p "${nested_dir}"
+  {
+    printf 'APP_MODE=%s\nFILE_ONLY=file-value\n' "${sentinel_file}"
+    printf '%s\n' 'EQUALS_VALUE=first=second' 'HASH_VALUE=value#fragment' 'QUOTED_VALUE="literal-quotes"' "INTERPOLATED_VALUE=\${HOME}"
+  } >"${project_dir}/.elyro/dev.env"
+  printf 'APP_MODE=local-wins\nLOCAL_ONLY=local-value\n' >"${project_dir}/.elyro/user.local.env"
+  python3 - "${project_dir}/elyro.yaml" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+text = path.read_text()
+text = text.replace("        - .elyro/dev.env\n", "        - .elyro/dev.env\n        - .elyro/user.local.env\n")
+path.write_text(text)
+PY
+  prepare_project_dir "${project_dir}"
+
+  log "runtime environment: nested up and precedence"
+  (cd "${nested_dir}" && "${BIN}" up --json) | jq -e '.action == "created"' >/dev/null
+  first_container="$(container_for_project "${project_dir}")"
+  test -n "${first_container}"
+  test "$(cd "${nested_dir}" && "${BIN}" exec -- printenv APP_MODE)" = "inline-wins"
+  test "$("${BIN}" exec --project-dir "${project_dir}" -- printenv FILE_ONLY)" = "file-value"
+  test "$("${BIN}" exec --project-dir "${project_dir}" -- printenv LOCAL_ONLY)" = "local-value"
+  test "$("${BIN}" exec --project-dir "${project_dir}" -- printenv EQUALS_VALUE)" = "first=second"
+  test "$("${BIN}" exec --project-dir "${project_dir}" -- printenv HASH_VALUE)" = "value#fragment"
+  test "$("${BIN}" exec --project-dir "${project_dir}" -- printenv QUOTED_VALUE)" = '"literal-quotes"'
+  test "$("${BIN}" exec --project-dir "${project_dir}" -- printenv INTERPOLATED_VALUE)" = "\${HOME}"
+  host_alias="$(latest_host_alias)"
+  test "$(run_ssh "${host_alias}" 'printenv APP_MODE')" = "inline-wins"
+  (cd "${nested_dir}" && "${BIN}" open --print) | grep -Fq 'vscode-remote://ssh-remote+elyro-'
+
+  report="${TMP_ROOT}/runtime-environment-doctor.json"
+  (cd "${nested_dir}" && "${BIN}" doctor --json) >"${report}"
+  jq -e '
+    .schema_version == 2 and .healthy == true and
+    .project.runtime_environment.variables == ["APP_MODE", "EMPTY_VALUE", "EQUALS_VALUE", "FILE_ONLY", "HASH_VALUE", "INTERPOLATED_VALUE", "LOCAL_ONLY", "QUOTED_VALUE"] and
+    .project.runtime_environment.env_files == [".elyro/dev.env", ".elyro/user.local.env"] and
+    any(.checks[]; .name == "runtime_environment" and .status == "ok")
+  ' "${report}" >/dev/null
+  if grep -Fq "${sentinel_file}" "${report}" || grep -Fq "${sentinel_inline}" "${report}"; then
+    printf '[workspace-e2e] doctor leaked a runtime environment value\n' >&2
+    return 1
+  fi
+  if docker inspect "${first_container}" --format '{{json .Config.Labels}}' | grep -Fq "${sentinel_file}"; then
+    printf '[workspace-e2e] container labels leaked a runtime environment value\n' >&2
+    return 1
+  fi
+
+  log "runtime environment: unchanged effective values reuse Workspace"
+  {
+    printf '%s\n' 'APP_MODE=source-changed-but-overridden' 'FILE_ONLY=file-value'
+    printf '%s\n' 'EQUALS_VALUE=first=second' 'HASH_VALUE=value#fragment' 'QUOTED_VALUE="literal-quotes"' "INTERPOLATED_VALUE=\${HOME}"
+  } >"${project_dir}/.elyro/dev.env"
+  (cd "${nested_dir}" && "${BIN}" up --json) | jq -e '.action == "reused"' >/dev/null
+  test "$(container_for_project "${project_dir}")" = "${first_container}"
+
+  log "runtime environment: effective value change recreates Workspace"
+  printf 'APP_MODE=local-wins\nLOCAL_ONLY=changed-value\n' >"${project_dir}/.elyro/user.local.env"
+  (cd "${nested_dir}" && "${BIN}" up --json) | jq -e '.action == "recreated"' >/dev/null
+  second_container="$(container_for_project "${project_dir}")"
+  test -n "${second_container}"
+  test "${second_container}" != "${first_container}"
+  test "$("${BIN}" exec --project-dir "${project_dir}" -- printenv LOCAL_ONLY)" = "changed-value"
+
+  log "runtime environment: workspace down"
+  (cd "${nested_dir}" && "${BIN}" down) >/dev/null
+  assert_workspace_removed "${project_dir}"
+}
+
 run_doctor_unconfigured_case() {
   local project_dir report
 
@@ -549,6 +631,7 @@ main() {
       java) run_java_case ;;
       environment) run_environment_case ;;
       image) run_project_image_case ;;
+      runtime-environment) run_runtime_environment_case ;;
       *) printf '[workspace-e2e] unknown case: %s\n' "${case_name}" >&2; exit 1 ;;
     esac
   done

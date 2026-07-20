@@ -20,6 +20,9 @@ type EnvironmentSelection struct {
 	EnvironmentExplicit bool
 	ToolchainExplicit   bool
 	PlatformExplicit    bool
+	// SkipRuntimeEnvironment is reserved for image builds, whose inputs must
+	// remain independent from container runtime environment files.
+	SkipRuntimeEnvironment bool
 }
 
 type ResolvedEnvironment struct {
@@ -137,7 +140,7 @@ func (cfg *projectConfig) resolveNamedEnvironment(projectDir, name, mountDir str
 
 	resolved.RecommendedExtensions = append(resolved.RecommendedExtensions, environment.VSCode.Extensions...)
 	resolved.Settings = mergeSettings(resolved.Settings, environment.VSCode.Settings)
-	dockerOptions, err := resolveDockerOptions(projectDir, environment.Docker)
+	dockerOptions, err := resolveDockerOptions(projectDir, environment.Docker, selection.SkipRuntimeEnvironment)
 	if err != nil {
 		return ResolvedEnvironment{}, fmt.Errorf("environment %q: %w", name, err)
 	}

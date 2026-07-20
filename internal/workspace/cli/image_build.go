@@ -86,8 +86,9 @@ func newImageBuildCmd() *cobra.Command {
 			}
 			environment, err := workspace.ResolveEnvironment(root.Dir, project.MountDir, workspace.EnvironmentSelection{
 				Environment: environmentName, Platform: platform,
-				EnvironmentExplicit: environmentExplicit,
-				PlatformExplicit:    cmd.Flags().Changed("platform"),
+				EnvironmentExplicit:    environmentExplicit,
+				PlatformExplicit:       cmd.Flags().Changed("platform"),
+				SkipRuntimeEnvironment: true,
 			})
 			if err != nil {
 				return err

@@ -38,20 +38,26 @@ type doctorCheck struct {
 }
 
 type doctorProjectView struct {
-	Root            string                           `json:"root"`
-	Source          elyroworkspace.ProjectRootSource `json:"source"`
-	ConfigPath      string                           `json:"config_path,omitempty"`
-	Environment     string                           `json:"environment,omitempty"`
-	Toolchain       string                           `json:"toolchain,omitempty"`
-	Image           string                           `json:"image,omitempty"`
-	Platform        string                           `json:"platform,omitempty"`
-	WorkspaceStatus string                           `json:"workspace_status,omitempty"`
-	ImageBuild      *doctorImageBuildView            `json:"image_build,omitempty"`
+	Root               string                           `json:"root"`
+	Source             elyroworkspace.ProjectRootSource `json:"source"`
+	ConfigPath         string                           `json:"config_path,omitempty"`
+	Environment        string                           `json:"environment,omitempty"`
+	Toolchain          string                           `json:"toolchain,omitempty"`
+	Image              string                           `json:"image,omitempty"`
+	Platform           string                           `json:"platform,omitempty"`
+	WorkspaceStatus    string                           `json:"workspace_status,omitempty"`
+	ImageBuild         *doctorImageBuildView            `json:"image_build,omitempty"`
+	RuntimeEnvironment *doctorRuntimeEnvironmentView    `json:"runtime_environment,omitempty"`
 }
 
 type doctorImageBuildView struct {
 	Context    string `json:"context"`
 	Dockerfile string `json:"dockerfile"`
+}
+
+type doctorRuntimeEnvironmentView struct {
+	Variables []string `json:"variables"`
+	EnvFiles  []string `json:"env_files"`
 }
 
 type doctorJSONView struct {
@@ -155,7 +161,9 @@ func addProjectDoctorChecks(report *doctorJSONView, projectDir string, explicit 
 	if err != nil {
 		if projectConfigurationExists(root.Dir) {
 			name := "workspace_configuration"
-			if view.ImageBuild != nil {
+			if elyroworkspace.IsRuntimeEnvironmentError(err) {
+				name = "runtime_environment"
+			} else if view.ImageBuild != nil {
 				name = "image_build"
 			}
 			report.add(doctorCheck{Scope: "project", Name: name, Status: doctorStatusFail, Message: err.Error()})
@@ -172,6 +180,21 @@ func addProjectDoctorChecks(report *doctorJSONView, projectDir string, explicit 
 	view.Toolchain = string(environment.Toolchain)
 	view.Image = environment.Image
 	view.Platform = environment.Platform
+	runtimeEnvironment := environment.Docker.RuntimeEnvironment
+	if runtimeEnvironment.Configured {
+		envFiles := make([]string, 0, len(runtimeEnvironment.EnvFiles))
+		for _, file := range runtimeEnvironment.EnvFiles {
+			envFiles = append(envFiles, file.RelativePath)
+		}
+		view.RuntimeEnvironment = &doctorRuntimeEnvironmentView{
+			Variables: append([]string(nil), runtimeEnvironment.VariableNames...),
+			EnvFiles:  envFiles,
+		}
+		report.add(doctorCheck{
+			Scope: "project", Name: "runtime_environment", Status: doctorStatusOK,
+			Message: fmt.Sprintf("Resolved %d runtime variables from %d explicit environment files", len(runtimeEnvironment.VariableNames), len(runtimeEnvironment.EnvFiles)),
+		})
+	}
 	if environment.ImageBuild != nil {
 		view.ImageBuild = &doctorImageBuildView{Context: environment.ImageBuild.Context, Dockerfile: environment.ImageBuild.Dockerfile}
 		report.add(doctorCheck{Scope: "project", Name: "image_build", Status: doctorStatusOK, Message: fmt.Sprintf("Build inputs are valid: context=%s dockerfile=%s", environment.ImageBuild.Context, environment.ImageBuild.Dockerfile)})

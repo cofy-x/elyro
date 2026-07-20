@@ -13,4 +13,6 @@ Use Elyro as the only interface to the project's local Linux development environ
 4. For pipes, redirects, expansion, or compound shell syntax, invoke it explicitly with `elyro exec -- bash -lc '...'`.
 5. If the environment is unhealthy or a prerequisite is missing, inspect `elyro doctor --json` before proposing changes.
 
+Project `docker.environment` and `docker.env_files` values are inherited by every Workspace command. For a temporary command-only override, use `elyro exec -- env KEY=value COMMAND`; do not rewrite project configuration or assume Elyro provides secret storage.
+
 Do not bypass Elyro by invoking Docker or SSH directly. Do not install or run a coding-agent CLI inside the Workspace. Do not stop or remove a Workspace that was already running before the task. Leave `elyro open` and destructive cleanup such as `elyro down` to the user unless they explicitly request it.

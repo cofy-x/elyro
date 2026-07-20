@@ -15,3 +15,5 @@ Elyro manages local containers, host mounts, credentials, SSH configuration,
 and browser terminals. Treat project-provided `elyro.yaml` files and custom
 images as executable configuration, and review unsafe-Environment warnings before
 proceeding.
+
+Values configured through `docker.environment` or `docker.env_files` are stored in Docker container configuration and are visible to users with Docker access. They are runtime configuration, not a secret store. Do not place credentials or other sensitive values there unless that Docker visibility is acceptable.

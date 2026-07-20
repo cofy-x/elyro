@@ -3,7 +3,7 @@ package docker
 import "testing"
 
 func TestParseInspectOutputKeepsEmptyPublishedField(t *testing.T) {
-	output := "id123\t/elyro-workspace-demo\telyro/workspace-python:latest-amd64\trunning\tdemo\tpython\tpython\telyro/workspace-python:latest-amd64\tlinux/amd64\t./tmp/demo\telyro-demo\t49123\t\tfalse\t\n"
+	output := "id123\t/elyro-workspace-demo\telyro/workspace-python:latest-amd64\trunning\tdemo\tpython\tpython\telyro/workspace-python:latest-amd64\tlinux/amd64\t./tmp/demo\telyro-demo\t49123\t\tfalse\t\t\n"
 
 	got, err := parseInspectOutput("id123", output)
 	if err != nil {
@@ -20,5 +20,8 @@ func TestParseInspectOutputKeepsEmptyPublishedField(t *testing.T) {
 	}
 	if got.Mounts != "" {
 		t.Fatalf("expected empty mounts field, got %q", got.Mounts)
+	}
+	if got.RuntimeEnvironmentDigest != "" {
+		t.Fatalf("expected empty runtime environment digest, got %q", got.RuntimeEnvironmentDigest)
 	}
 }

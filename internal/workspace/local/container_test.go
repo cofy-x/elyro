@@ -80,8 +80,8 @@ func TestEnsureContainerRebuildsMismatchedContainer(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ensureContainer() error = %v", err)
 	}
-	if action != WorkspaceActionCreated {
-		t.Fatalf("ensureContainer() action = %q, want created", action)
+	if action != WorkspaceActionRecreated {
+		t.Fatalf("ensureContainer() action = %q, want recreated", action)
 	}
 	if !slices.Equal(runtime.removes, []string{project.ContainerName}) {
 		t.Fatalf("removes = %v, want %v", runtime.removes, []string{project.ContainerName})

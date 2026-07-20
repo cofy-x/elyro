@@ -31,7 +31,7 @@ Elyro does not install, authenticate, run, or proxy a coding agent. The bundled 
 
 - Mac-first and local-first: source files and editing stay on the host.
 - Zero-config startup when one Toolchain can be detected; only explicit `init` commands write project configuration.
-- Maintained Workspace images for Python, Go, Node.js, and Java, with an explicit project-image workflow for persistent OS tools.
+- Maintained Workspace images for Python, Go, Node.js, and Java, with explicit project images for persistent OS tools and reproducible runtime environment inputs.
 - Direct, argv-safe Linux execution through `elyro exec`; shell syntax is explicit with `bash -lc`.
 - Editor handoff over managed Remote SSH with strict, isolated host-key trust.
 - Small machine contracts for automation: schema 1 for Workspace lifecycle and inspection, plus scoped schema-2 diagnostics.
@@ -69,6 +69,18 @@ elyro up --recreate
 ```
 
 Ordinary `elyro up` never builds a Dockerfile or runs project lifecycle hooks.
+
+Declare non-sensitive runtime values explicitly when every shell, command, and editor terminal should share them:
+
+```yaml
+docker:
+  environment:
+    APP_ENV: development
+  env_files:
+    - .elyro/dev.env
+```
+
+Elyro never reads `.env` implicitly or inherits arbitrary host variables. Runtime values remain visible through Docker and are not a secret store. See the [runtime environment example](examples/workspace/go-runtime-environment/README.md).
 
 ## Coding agents
 

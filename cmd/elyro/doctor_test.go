@@ -3,8 +3,10 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -22,6 +24,10 @@ func TestDoctorJSONSchemaTwo(t *testing.T) {
 		Project: &doctorProjectView{
 			Root: "/tmp/demo", Source: workspace.ProjectRootSourceGit, WorkspaceStatus: "absent",
 			ImageBuild: &doctorImageBuildView{Context: ".", Dockerfile: ".elyro/Dockerfile"},
+			RuntimeEnvironment: &doctorRuntimeEnvironmentView{
+				Variables: []string{"APP_ENV", "CGO_ENABLED"},
+				EnvFiles:  []string{".elyro/dev.env", ".elyro/local.env"},
+			},
 		},
 		Checks: []doctorCheck{{
 			Scope: "system", Name: "docker_cli", Status: doctorStatusOK, Message: "Docker CLI is available",
@@ -41,6 +47,18 @@ func TestDoctorJSONSchemaTwo(t *testing.T) {
 	imageBuild := project["image_build"].(map[string]any)
 	if imageBuild["context"] != "." || imageBuild["dockerfile"] != ".elyro/Dockerfile" {
 		t.Fatalf("doctor image_build = %#v", imageBuild)
+	}
+	runtimeEnvironment := project["runtime_environment"].(map[string]any)
+	variables := runtimeEnvironment["variables"].([]any)
+	if len(variables) != 2 || variables[0] != "APP_ENV" || variables[1] != "CGO_ENABLED" {
+		t.Fatalf("doctor runtime_environment variables = %#v", variables)
+	}
+	envFiles := runtimeEnvironment["env_files"].([]any)
+	if len(envFiles) != 2 || envFiles[0] != ".elyro/dev.env" || envFiles[1] != ".elyro/local.env" {
+		t.Fatalf("doctor runtime_environment env_files = %#v", envFiles)
+	}
+	if strings.Contains(output.String(), "development") || strings.Contains(output.String(), "sha256:") {
+		t.Fatalf("doctor JSON leaked runtime environment value or digest: %s", output.String())
 	}
 	checks := got["checks"].([]any)
 	check := checks[0].(map[string]any)
@@ -119,4 +137,71 @@ func TestWorkspaceSpecificationMatchesResolvedEnvironment(t *testing.T) {
 	if local.ContainerSpecificationMatches(info, project, environment, "", "", "false") {
 		t.Fatal("mismatched image was accepted")
 	}
+}
+
+func TestWorkspaceSpecificationMatchesRuntimeEnvironmentDigest(t *testing.T) {
+	project := workspace.ProjectContext{ProjectDir: "/tmp/demo", Slug: "demo", MountDir: "/home/elyro/demo"}
+	environment := workspace.ResolvedEnvironment{
+		Name: "go", Toolchain: workspace.ToolchainGo, Image: "example.invalid/go:v1", Platform: "linux/arm64",
+		Docker: workspace.DockerOptions{RuntimeEnvironment: workspace.RuntimeEnvironment{Digest: "sha256:current"}},
+	}
+	info := &dockerruntime.Container{
+		ProjectDir: project.ProjectDir, Hostname: project.Slug, Environment: environment.Name,
+		Toolchain: string(environment.Toolchain), Image: environment.Image, ImageLabel: environment.Image,
+		Platform: environment.Platform, Privileged: "false", RuntimeEnvironmentDigest: "sha256:current",
+	}
+	if !local.ContainerSpecificationMatches(info, project, environment, "", "", "false") {
+		t.Fatal("matching runtime environment digest was rejected")
+	}
+	info.RuntimeEnvironmentDigest = "sha256:old"
+	if local.ContainerSpecificationMatches(info, project, environment, "", "", "false") {
+		t.Fatal("mismatched runtime environment digest was accepted")
+	}
+}
+
+func TestDoctorRuntimeEnvironmentRedactsValues(t *testing.T) {
+	projectDir := t.TempDir()
+	if err := os.Mkdir(filepath.Join(projectDir, ".elyro"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	const sentinel = "doctor-runtime-secret-sentinel"
+	if err := os.WriteFile(filepath.Join(projectDir, ".elyro", "dev.env"), []byte("FILE_VALUE="+sentinel+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	config := "version: 1\ndefault_environment: dev\nenvironments:\n  dev:\n    toolchain: go\n    docker:\n      environment:\n        INLINE_VALUE: \"" + sentinel + "\"\n      env_files:\n        - .elyro/dev.env\n"
+	if err := os.WriteFile(filepath.Join(projectDir, "elyro.yaml"), []byte(config), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	report := doctorJSONView{SchemaVersion: 2, Kind: "doctor", Healthy: true}
+	addProjectDoctorChecks(&report, projectDir, true, workspace.Store{}, errors.New("registry unavailable"), false, false)
+	if report.Project == nil || report.Project.RuntimeEnvironment == nil {
+		t.Fatalf("doctor project = %#v", report.Project)
+	}
+	if !slices.Equal(report.Project.RuntimeEnvironment.Variables, []string{"FILE_VALUE", "INLINE_VALUE"}) {
+		t.Fatalf("runtime variables = %#v", report.Project.RuntimeEnvironment.Variables)
+	}
+	var output bytes.Buffer
+	if err := writeDoctorJSON(&output, report); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(output.String(), sentinel) || strings.Contains(output.String(), "sha256:") {
+		t.Fatalf("doctor leaked runtime environment value or digest: %s", output.String())
+	}
+}
+
+func TestDoctorClassifiesInvalidRuntimeEnvironment(t *testing.T) {
+	projectDir := t.TempDir()
+	config := "version: 1\ndefault_environment: dev\nenvironments:\n  dev:\n    toolchain: go\n    docker:\n      environment:\n        INVALID: true\n"
+	if err := os.WriteFile(filepath.Join(projectDir, "elyro.yaml"), []byte(config), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	report := doctorJSONView{SchemaVersion: 2, Kind: "doctor", Healthy: true}
+	addProjectDoctorChecks(&report, projectDir, true, workspace.Store{}, errors.New("registry unavailable"), false, false)
+	for _, check := range report.Checks {
+		if check.Name == "runtime_environment" && check.Status == doctorStatusFail {
+			return
+		}
+	}
+	t.Fatalf("doctor checks = %#v, want runtime_environment failure", report.Checks)
 }

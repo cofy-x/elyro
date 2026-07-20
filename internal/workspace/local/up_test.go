@@ -88,6 +88,32 @@ func TestUpMissingProjectBuildImageSuggestsImageBuildWithoutTouchingWorkspace(t 
 	}
 }
 
+func TestUpInvalidRuntimeEnvironmentPreservesExistingWorkspace(t *testing.T) {
+	projectDir := t.TempDir()
+	if err := os.Mkdir(filepath.Join(projectDir, ".elyro"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	const sentinel = "runtime-secret-sentinel"
+	if err := os.WriteFile(filepath.Join(projectDir, ".elyro", "dev.env"), []byte("VALUE="+sentinel+"\nBROKEN\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	config := []byte("version: 1\ndefault_environment: dev\nenvironments:\n  dev:\n    toolchain: go\n    docker:\n      env_files:\n        - .elyro/dev.env\n")
+	if err := os.WriteFile(filepath.Join(projectDir, "elyro.yaml"), config, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	runtime := &fakeContainerRuntime{imageExists: true, byProject: &dockerruntime.Container{Name: "existing-workspace"}}
+	_, err := up(t.Context(), runtime, UpRequest{ProjectDir: projectDir, SSHConfigPath: "/tmp/ssh-config", Recreate: true})
+	if err == nil || !strings.Contains(err.Error(), ".elyro/dev.env") || !strings.Contains(err.Error(), "line 2") {
+		t.Fatalf("up() error = %v, want actionable env file error", err)
+	}
+	if strings.Contains(err.Error(), sentinel) {
+		t.Fatalf("up() error leaked runtime environment value: %v", err)
+	}
+	if len(runtime.removes) != 0 || len(runtime.runs) != 0 || len(runtime.starts) != 0 {
+		t.Fatalf("preflight failure mutated workspace: removes=%v runs=%v starts=%v", runtime.removes, runtime.runs, runtime.starts)
+	}
+}
+
 func TestUpReportsProgressAndPreservesPullError(t *testing.T) {
 	var progress []string
 	_, err := up(t.Context(), &fakeContainerRuntime{pullErr: errors.New("denied: token expired")}, UpRequest{

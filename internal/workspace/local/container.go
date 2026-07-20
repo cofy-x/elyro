@@ -14,8 +14,9 @@ func ensureContainer(ctx context.Context, runtime containerRuntime, projectCtx w
 		return nil, "", err
 	}
 
-	recreating := recreate && info != nil
-	if recreating {
+	recreating := false
+	if recreate && info != nil {
+		recreating = true
 		if err := runtime.Remove(ctx, info.Name); err != nil {
 			return nil, "", err
 		}
@@ -24,6 +25,7 @@ func ensureContainer(ctx context.Context, runtime containerRuntime, projectCtx w
 
 	if info != nil {
 		if !ContainerSpecificationMatches(info, projectCtx, environment, normalizedPublishes, normalizedMounts, privilegedLabel) {
+			recreating = true
 			if err := runtime.Remove(ctx, info.Name); err != nil {
 				return nil, "", err
 			}
@@ -83,7 +85,8 @@ func ContainerSpecificationMatches(info *dockerruntime.Container, projectCtx wor
 		info.Hostname == projectCtx.Slug &&
 		info.Published == normalizedPublishes &&
 		info.Privileged == privilegedLabel &&
-		info.Mounts == normalizedMounts
+		info.Mounts == normalizedMounts &&
+		info.RuntimeEnvironmentDigest == environment.Docker.RuntimeEnvironment.Digest
 }
 
 func displayEnvironment(environment, toolchain string) string {

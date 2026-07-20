@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/cofy-x/elyro/internal/workspace"
@@ -99,13 +100,14 @@ func authorizedKeyFromPrivateKey(privateKey any) (string, error) {
 	return string(ssh.MarshalAuthorizedKey(signer.PublicKey())), nil
 }
 
-func InstallContainerSSHAccess(ctx context.Context, containerName, publicKey string) error {
+func InstallContainerSSHAccess(ctx context.Context, containerName, publicKey string, runtimeEnvironment map[string]string) error {
 	script := strings.TrimSpace(`
 set -eu
 
 user_home="/home/elyro"
 ssh_dir="${user_home}/.ssh"
 authorized_keys="${ssh_dir}/authorized_keys"
+environment_file="${ssh_dir}/environment"
 elyro_gid="$(id -g elyro)"
 begin="# ELYRO_WORKSPACE_AUTHORIZED_KEY_BEGIN"
 end="# ELYRO_WORKSPACE_AUTHORIZED_KEY_END"
@@ -134,12 +136,18 @@ fi
 install -m 600 -o elyro -g "${elyro_gid}" "${tmp}" "${authorized_keys}"
 rm -f "${tmp}"
 
+environment_tmp="$(mktemp)"
+cat >"${environment_tmp}"
+install -m 600 -o elyro -g "${elyro_gid}" "${environment_tmp}" "${environment_file}"
+rm -f "${environment_tmp}"
+
 install -d -m 755 /etc/ssh/sshd_config.d
 cat >/etc/ssh/sshd_config.d/99-elyro-workspace.conf <<'EOF_SSHD'
 PubkeyAuthentication yes
 PasswordAuthentication no
 KbdInteractiveAuthentication no
 PermitRootLogin no
+PermitUserEnvironment yes
 EOF_SSHD
 
 sshd -t
@@ -147,7 +155,20 @@ if pgrep -x sshd >/dev/null 2>&1; then
   pkill -HUP sshd || true
 fi
 `)
-	if _, err := runOutput(ctx, nil, "docker", "exec", "--user", "0", "-e", "ELYRO_WORKSPACE_PUBLIC_KEY="+publicKey, containerName, "bash", "-lc", script); err != nil {
+	var environmentInput strings.Builder
+	names := make([]string, 0, len(runtimeEnvironment))
+	for name := range runtimeEnvironment {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		environmentInput.WriteString(name)
+		environmentInput.WriteByte('=')
+		environmentInput.WriteString(runtimeEnvironment[name])
+		environmentInput.WriteByte('\n')
+	}
+	args := []string{"exec", "-i", "--user", "0", "-e", "ELYRO_WORKSPACE_PUBLIC_KEY=" + publicKey, containerName, "bash", "-lc", script}
+	if _, err := runOutput(ctx, strings.NewReader(environmentInput.String()), "docker", args...); err != nil {
 		return fmt.Errorf("install workspace ssh access: %w", err)
 	}
 	return nil

@@ -29,7 +29,7 @@ elyro up --recreate
 elyro down
 ```
 
-`--environment` and `--toolchain` are mutually exclusive. `up --json` never prompts and returns schema 1 with `action`, `duration_ms`, and a public Workspace view. `down` removes the container, managed SSH access, and registry entry; `down --json` returns the same Workspace view plus `removed`.
+`--environment` and `--toolchain` are mutually exclusive. `up --json` never prompts and returns schema 1 with `action`, `duration_ms`, and a public Workspace view. Runtime environment values, variable names, files, and fingerprints are not added to lifecycle JSON or the registry. `down` removes the container, managed SSH access, and registry entry; `down --json` returns the same Workspace view plus `removed`.
 
 `up` detects a single Toolchain when possible. Ambiguous or unknown projects must choose `--toolchain` in non-interactive use. Only `elyro init` and `elyro image init` write `elyro.yaml`; both are explicit and refuse unsafe or ambiguous writes.
 
@@ -71,7 +71,7 @@ elyro doctor --project-dir PATH --json
 
 Workspace lifecycle and inspection output uses schema 1 and exposes product concepts only: identity, project and mount paths, lifecycle status, Environment, Toolchain, image, platform, hostname, and published ports. Docker container names, labels, SSH aliases, identities, and known-hosts paths are implementation details and are not part of JSON output.
 
-Doctor uses schema 2 with `kind`, `healthy`, an optional resolved `project`, and scoped checks. Each check has a stable `scope`, `name`, `status`, and non-empty `message`; any `fail` makes the command exit non-zero, while `warn` remains successful. Doctor automatically adds project checks when the current directory belongs to a configured, registered, Git, or detected Toolchain project. An unconfigured Git project with no detectable Toolchain is a warning; an invalid `elyro.yaml` is a failure. Doctor remains read-only. Errors use a non-zero exit code and actionable stderr; there is no global JSON error envelope.
+Doctor uses schema 2 with `kind`, `healthy`, an optional resolved `project`, and scoped checks. Each check has a stable `scope`, `name`, `status`, and non-empty `message`; any `fail` makes the command exit non-zero, while `warn` remains successful. Doctor automatically adds project checks when the current directory belongs to a configured, registered, Git, or detected Toolchain project. An unconfigured Git project with no detectable Toolchain is a warning; an invalid `elyro.yaml` is a failure. For a configured runtime environment, `project.runtime_environment` exposes sorted variable names and declared relative file paths, never values or a fingerprint. Doctor remains read-only. Errors use a non-zero exit code and actionable stderr; there is no global JSON error envelope.
 
 ## Terminal output
 

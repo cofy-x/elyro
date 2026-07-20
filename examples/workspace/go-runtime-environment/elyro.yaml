@@ -1,0 +1,11 @@
+version: 1
+default_environment: dev
+environments:
+  dev:
+    toolchain: go
+    docker:
+      environment:
+        APP_MODE: inline-wins
+        EMPTY_VALUE: ""
+      env_files:
+        - .elyro/dev.env

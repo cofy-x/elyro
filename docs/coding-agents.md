@@ -16,7 +16,7 @@ Inspect it without installing:
 elyro skill show
 ```
 
-The Skill directs the host agent to inspect `elyro status --json`, start with `elyro up --json` only when needed, and run Linux commands through `elyro exec -- ...`. It does not contain scripts, credentials, MCP configuration, or model settings.
+The Skill directs the host agent to inspect `elyro status --json`, start with `elyro up --json` only when needed, and run Linux commands through `elyro exec -- ...`. Project runtime environment configuration is inherited automatically; a temporary per-command override can use `elyro exec -- env KEY=value command`. The Skill does not contain scripts, credentials, MCP configuration, or model settings.
 
 ## AGENTS.md snippet
 

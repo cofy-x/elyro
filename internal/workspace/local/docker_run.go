@@ -24,6 +24,7 @@ func dockerRunArgs(projectCtx workspace.ProjectContext, environment workspace.Re
 		"-v", fmt.Sprintf("%s:%s", projectCtx.ProjectDir, projectCtx.MountDir),
 	)
 	args = append(args, workspace.DockerMountArgs(environment.Docker.Mounts)...)
+	args = append(args, workspace.DockerRuntimeEnvironmentArgs(environment.Docker.RuntimeEnvironment)...)
 	args = append(args,
 		"-w", projectCtx.MountDir,
 		"--label", dockerruntime.LabelManaged,
@@ -36,6 +37,7 @@ func dockerRunArgs(projectCtx workspace.ProjectContext, environment workspace.Re
 		"--label", fmt.Sprintf("%s=%s", dockerruntime.LabelPublishKey, normalizedPublishes),
 		"--label", fmt.Sprintf("%s=%s", dockerruntime.LabelPrivileged, privilegedLabel),
 		"--label", fmt.Sprintf("%s=%s", dockerruntime.LabelMountsKey, normalizedMounts),
+		"--label", fmt.Sprintf("%s=%s", dockerruntime.LabelRuntimeEnvironmentDigest, environment.Docker.RuntimeEnvironment.Digest),
 		environment.Image,
 	)
 	return args

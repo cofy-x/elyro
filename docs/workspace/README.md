@@ -17,6 +17,8 @@ The official images open a native zsh prompt such as `elyro:demo ~/demo ❯`, ma
 
 `elyro init` creates `elyro.yaml` for named Environments and advanced settings. Without configuration, `up` detects a single Python, Go, Node.js, or Java Toolchain and writes no project file.
 
+Explicit `docker.environment` values and project-relative `docker.env_files` become container-wide runtime configuration inherited by `exec`, `shell`, SSH, and editor terminals. Elyro never reads `.env` or arbitrary host variables implicitly, and these Docker-visible values are not a secret store.
+
 When `--project-dir` is omitted, Elyro uses the nearest `elyro.yaml`, then an existing containing Workspace, then the nearest Git root. This keeps every project-scoped command on the same Workspace when it runs from a subdirectory.
 
 - [CLI reference](cli-reference.md)

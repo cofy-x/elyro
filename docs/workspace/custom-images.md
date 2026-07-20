@@ -75,9 +75,11 @@ The contract is Linux distribution independent. A compatible image must:
 - allow Docker to execute management commands as UID `0`
 - allow UID `0` to create and own files below `/home/elyro` and `/etc/ssh`
 
-Docker `ENV` supplies the environment used by `elyro exec`. The image author is
+Docker `ENV` supplies the lowest-priority environment used by `elyro exec`. A project may override it explicitly with [`docker.env_files` and `docker.environment`](configuration.md#runtime-environment). The image author is
 also responsible for making Toolchain paths available to an SSH login shell,
 for example through `/etc/environment` or the distribution's login profile.
+
+Runtime environment values are container configuration, not build inputs: `elyro image build` never reads or forwards them. They are also not secrets because Docker users can inspect the resulting container configuration.
 
 The image may use any default Docker user. Elyro explicitly uses UID `0` only
 for SSH configuration. `elyro shell` and `elyro exec` use `docker exec` as
@@ -86,7 +88,7 @@ for SSH configuration. `elyro shell` and `elyro exec` use `docker exec` as
 On Linux, bind-mounted project files must be writable by UID/GID `1000`. Elyro does not change host ownership or broaden project permissions automatically.
 
 Elyro installs its managed public key in `/home/elyro/.ssh/authorized_keys` and
-writes an SSH drop-in that enables public-key authentication while disabling
+writes an SSH drop-in that enables public-key authentication and the root-owned managed runtime environment file while disabling
 password, keyboard-interactive, and root login. The image should start with
 equivalent safe defaults rather than temporarily exposing password login.
 

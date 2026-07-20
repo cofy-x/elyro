@@ -1,18 +1,22 @@
 package workspace
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"path"
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"gopkg.in/yaml.v3"
 )
 
 type DockerOptions struct {
-	Privileged bool
-	Mounts     []DockerMount
-	Publishes  []PortPublish
+	Privileged         bool
+	Mounts             []DockerMount
+	Publishes          []PortPublish
+	RuntimeEnvironment RuntimeEnvironment
 }
 
 type DockerMount struct {
@@ -22,9 +26,48 @@ type DockerMount struct {
 }
 
 type configuredDocker struct {
-	Privileged bool              `yaml:"privileged"`
-	Mounts     []configuredMount `yaml:"mounts"`
-	Publish    []string          `yaml:"publish"`
+	Privileged  bool                           `yaml:"privileged"`
+	Mounts      []configuredMount              `yaml:"mounts"`
+	Publish     []string                       `yaml:"publish"`
+	Environment configuredEnvironmentVariables `yaml:"environment"`
+	EnvFiles    configuredEnvironmentFiles     `yaml:"env_files"`
+}
+
+func (docker *configuredDocker) UnmarshalYAML(node *yaml.Node) error {
+	if node.Kind != yaml.MappingNode {
+		return fmt.Errorf("docker must be a mapping")
+	}
+	seen := make(map[string]struct{}, len(node.Content)/2)
+	for i := 0; i+1 < len(node.Content); i += 2 {
+		key, value := node.Content[i].Value, node.Content[i+1]
+		if _, exists := seen[key]; exists {
+			return fmt.Errorf("docker field %q is duplicated", key)
+		}
+		seen[key] = struct{}{}
+		switch key {
+		case "environment":
+			if value.Kind != yaml.MappingNode {
+				return &RuntimeEnvironmentError{Err: fmt.Errorf("docker.environment must be a string mapping")}
+			}
+		case "env_files":
+			if value.Kind != yaml.SequenceNode {
+				return &RuntimeEnvironmentError{Err: fmt.Errorf("docker.env_files must be a string list")}
+			}
+		}
+	}
+	data, err := yaml.Marshal(node)
+	if err != nil {
+		return err
+	}
+	type plainDocker configuredDocker
+	var decoded plainDocker
+	decoder := yaml.NewDecoder(bytes.NewReader(data))
+	decoder.KnownFields(true)
+	if err := decoder.Decode(&decoded); err != nil {
+		return err
+	}
+	*docker = configuredDocker(decoded)
+	return nil
 }
 
 type configuredMount struct {
@@ -33,7 +76,7 @@ type configuredMount struct {
 	ReadOnly bool   `yaml:"read_only"`
 }
 
-func resolveDockerOptions(projectDir string, cfg configuredDocker) (DockerOptions, error) {
+func resolveDockerOptions(projectDir string, cfg configuredDocker, skipRuntimeEnvironment bool) (DockerOptions, error) {
 	publishes, err := ParsePublishSpecs(cfg.Publish)
 	if err != nil {
 		return DockerOptions{}, fmt.Errorf("docker.publish: %w", err)
@@ -80,11 +123,19 @@ func resolveDockerOptions(projectDir string, cfg configuredDocker) (DockerOption
 		}
 		return !mounts[i].ReadOnly && mounts[j].ReadOnly
 	})
+	var runtimeEnvironment RuntimeEnvironment
+	if !skipRuntimeEnvironment {
+		runtimeEnvironment, err = ResolveRuntimeEnvironment(projectDir, cfg.Environment.Values, cfg.EnvFiles.Paths)
+		if err != nil {
+			return DockerOptions{}, &RuntimeEnvironmentError{Err: err}
+		}
+	}
 
 	return DockerOptions{
-		Privileged: cfg.Privileged,
-		Mounts:     mounts,
-		Publishes:  publishes,
+		Privileged:         cfg.Privileged,
+		Mounts:             mounts,
+		Publishes:          publishes,
+		RuntimeEnvironment: runtimeEnvironment,
 	}, nil
 }
 
