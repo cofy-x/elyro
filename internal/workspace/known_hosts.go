@@ -34,8 +34,12 @@ func prepareKnownSSHHost(ctx context.Context, path, alias, containerID, host, po
 		return err
 	}
 	previousID, previousKeys := knownHostBlock(content, alias)
-	if previousID == containerID && previousKeys != "" && previousKeys != keys {
-		return fmt.Errorf("SSH host key changed unexpectedly for running workspace %s; remove the container only if this change is expected", alias)
+	if previousID == containerID && previousKeys != "" {
+		mergedKeys, compatible := mergeKnownSSHKeys(previousKeys, keys)
+		if !compatible {
+			return fmt.Errorf("SSH host key changed unexpectedly for running workspace %s; remove the container only if this change is expected", alias)
+		}
+		keys = mergedKeys
 	}
 	updated := removeKnownHostBlock(content, alias)
 	block := buildKnownHostBlock(alias, containerID, keys)
@@ -45,6 +49,69 @@ func prepareKnownSSHHost(ctx context.Context, path, alias, containerID, host, po
 		updated = strings.TrimRight(updated, "\n") + "\n\n" + block
 	}
 	return writeFileWithParents(path, updated)
+}
+
+// mergeKnownSSHKeys tolerates ssh-keyscan returning only a subset of a
+// server's host-key algorithms during an sshd reload. At least one previously
+// trusted algorithm must still match, and an algorithm that appears in both
+// scans must never change its key.
+func mergeKnownSSHKeys(previous, current string) (string, bool) {
+	previousByAlgorithm, ok := knownSSHKeysByAlgorithm(previous)
+	if !ok {
+		return exactKnownSSHKeys(previous, current)
+	}
+	currentByAlgorithm, ok := knownSSHKeysByAlgorithm(current)
+	if !ok {
+		return exactKnownSSHKeys(previous, current)
+	}
+
+	shared := false
+	for algorithm, previousLine := range previousByAlgorithm {
+		currentLine, present := currentByAlgorithm[algorithm]
+		if !present {
+			continue
+		}
+		shared = true
+		if previousLine != currentLine {
+			return "", false
+		}
+	}
+	if !shared {
+		return "", false
+	}
+
+	merged := make([]string, 0, len(previousByAlgorithm)+len(currentByAlgorithm))
+	for algorithm, line := range currentByAlgorithm {
+		previousByAlgorithm[algorithm] = line
+	}
+	for _, line := range previousByAlgorithm {
+		merged = append(merged, line)
+	}
+	sort.Strings(merged)
+	return strings.Join(merged, "\n"), true
+}
+
+func exactKnownSSHKeys(previous, current string) (string, bool) {
+	if previous != current {
+		return "", false
+	}
+	return previous, true
+}
+
+func knownSSHKeysByAlgorithm(keys string) (map[string]string, bool) {
+	byAlgorithm := make(map[string]string)
+	for _, line := range strings.Split(keys, "\n") {
+		fields := strings.Fields(line)
+		if len(fields) < 3 {
+			return nil, false
+		}
+		algorithm := fields[1]
+		if existing, found := byAlgorithm[algorithm]; found && existing != line {
+			return nil, false
+		}
+		byAlgorithm[algorithm] = line
+	}
+	return byAlgorithm, len(byAlgorithm) > 0
 }
 
 func RemoveKnownSSHHost(path, alias string) error {

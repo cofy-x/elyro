@@ -83,3 +83,68 @@ func TestPrepareKnownSSHHostLifecycle(t *testing.T) {
 		t.Fatalf("removed known-hosts = %q", content)
 	}
 }
+
+func TestPrepareKnownSSHHostMergesCompatiblePartialScans(t *testing.T) {
+	t.Parallel()
+
+	path := filepath.Join(t.TempDir(), "known_hosts")
+	keys := "[127.0.0.1]:2222 ssh-ed25519 ED25519"
+	scan := func(context.Context, string, string) (string, error) { return keys, nil }
+	if err := prepareKnownSSHHost(t.Context(), path, "elyro-demo", "container-1", "127.0.0.1", "2222", scan); err != nil {
+		t.Fatal(err)
+	}
+
+	keys = strings.Join([]string{
+		"[127.0.0.1]:2222 ssh-ed25519 ED25519",
+		"[127.0.0.1]:2222 ssh-rsa RSA",
+	}, "\n")
+	if err := prepareKnownSSHHost(t.Context(), path, "elyro-demo", "container-1", "127.0.0.1", "2222", scan); err != nil {
+		t.Fatalf("compatible expanded scan failed: %v", err)
+	}
+
+	keys = "[127.0.0.1]:2222 ssh-rsa RSA"
+	if err := prepareKnownSSHHost(t.Context(), path, "elyro-demo", "container-1", "127.0.0.1", "2222", scan); err != nil {
+		t.Fatalf("compatible reduced scan failed: %v", err)
+	}
+
+	content, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(content), "ED25519") || !strings.Contains(string(content), "RSA") {
+		t.Fatalf("merged known-hosts = %q", content)
+	}
+}
+
+func TestPrepareKnownSSHHostRejectsChangedOrUnrelatedPartialScan(t *testing.T) {
+	t.Parallel()
+
+	for _, changed := range []string{
+		"[127.0.0.1]:2222 ssh-ed25519 CHANGED",
+		"[127.0.0.1]:2222 ssh-rsa UNRELATED",
+	} {
+		path := filepath.Join(t.TempDir(), "known_hosts")
+		keys := "[127.0.0.1]:2222 ssh-ed25519 ORIGINAL"
+		scan := func(context.Context, string, string) (string, error) { return keys, nil }
+		if err := prepareKnownSSHHost(t.Context(), path, "elyro-demo", "container-1", "127.0.0.1", "2222", scan); err != nil {
+			t.Fatal(err)
+		}
+		keys = changed
+		if err := prepareKnownSSHHost(t.Context(), path, "elyro-demo", "container-1", "127.0.0.1", "2222", scan); err == nil || !strings.Contains(err.Error(), "changed unexpectedly") {
+			t.Fatalf("changed scan %q error = %v", changed, err)
+		}
+	}
+}
+
+func TestMergeKnownSSHKeysPreservesIdenticalLegacyContent(t *testing.T) {
+	t.Parallel()
+
+	const keys = "legacy-known-host-content"
+	merged, ok := mergeKnownSSHKeys(keys, keys)
+	if !ok || merged != keys {
+		t.Fatalf("mergeKnownSSHKeys() = (%q, %t)", merged, ok)
+	}
+	if _, ok := mergeKnownSSHKeys(keys, "different-legacy-content"); ok {
+		t.Fatal("mergeKnownSSHKeys accepted different unstructured content")
+	}
+}
