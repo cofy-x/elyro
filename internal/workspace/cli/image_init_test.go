@@ -41,6 +41,9 @@ func TestInitProjectImagePreservesExistingConfigComments(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(project, "elyro.yaml"), []byte(config), 0o640); err != nil {
 		t.Fatal(err)
 	}
+	if err := os.Chmod(filepath.Join(project, "elyro.yaml"), 0o640); err != nil {
+		t.Fatal(err)
+	}
 	err := initProjectImage(imageInitOptions{
 		ProjectDir: project, Image: "elyro-local/demo:dev", Yes: true,
 		In: strings.NewReader(""), Out: &bytes.Buffer{},
@@ -59,7 +62,7 @@ func TestInitProjectImagePreservesExistingConfigComments(t *testing.T) {
 		t.Fatal(err)
 	}
 	if info.Mode().Perm() != 0o640 {
-		t.Fatalf("mode = %o", info.Mode().Perm())
+		t.Fatalf("mode = %o for %s", info.Mode().Perm(), filepath.Join(project, "elyro.yaml"))
 	}
 }
 
