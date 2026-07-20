@@ -16,7 +16,7 @@ Usage:
                      [--release-url URL | --release-dir DIR]
 
 Options:
-  --version VERSION   Exact v-prefixed release tag, for example v0.1.2.
+  --version VERSION   Exact v-prefixed release tag, for example v0.1.3.
   --install-dir DIR   Destination for elyro.
                       Default: $ELYRO_INSTALL_DIR or $HOME/.local/bin.
   --release-url URL   Exact release asset directory. Intended for mirrors and
@@ -69,7 +69,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ ! "${version}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
-  echo "error: --version must be an exact v-prefixed release tag, for example v0.1.2" >&2
+  echo "error: --version must be an exact v-prefixed release tag, for example v0.1.3" >&2
   exit 2
 fi
 

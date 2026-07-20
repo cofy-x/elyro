@@ -2,7 +2,7 @@
 
 All notable changes to Elyro are documented here. The project follows Semantic Versioning, and pre-1.0 releases may contain intentional breaking changes.
 
-## [Unreleased]
+## [0.1.3] - 2026-07-20
 
 ### Added
 
