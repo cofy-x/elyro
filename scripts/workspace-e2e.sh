@@ -145,6 +145,16 @@ stop_workspace_service() {
   WORKSPACE_EXEC_LOG=""
 }
 
+file_fingerprint() {
+  local path="$1"
+
+  if [ ! -e "${path}" ]; then
+    printf 'absent\n'
+    return
+  fi
+  cksum "${path}"
+}
+
 cleanup() {
   local project_dir container_id
 
@@ -232,20 +242,24 @@ run_python_case() {
 
 run_go_case() {
   local project_dir host_alias port container_id recreated_container_id exec_status nested_dir root_id nested_id
+  local ssh_before known_hosts_before registry_before
 
   project_dir="$(copy_example go-http-service)"
   port="$(find_free_port)"
 
   log "go example: create plan is side-effect free"
+  ssh_before="$(file_fingerprint "${SSH_CONFIG}")"
+  known_hosts_before="$(file_fingerprint "${HOME}/.ssh/elyro_known_hosts")"
+  registry_before="$(file_fingerprint "${XDG_STATE_HOME}/elyro/workspaces.json")"
   "${BIN}" up --project-dir "${project_dir}" --publish "${port}:8000" --dry-run --json | \
     jq -e --arg root "${project_dir}" '
       .kind == "workspace_plan" and .operation == "up" and .action == "create" and
       .reasons == ["workspace_absent"] and .project.root == $root
     ' >/dev/null
   test -z "$(container_for_project "${project_dir}")"
-  test ! -s "${SSH_CONFIG}"
-  test ! -e "${HOME}/.ssh/elyro_known_hosts"
-  test ! -e "${XDG_STATE_HOME}/elyro/workspaces.json"
+  test "$(file_fingerprint "${SSH_CONFIG}")" = "${ssh_before}"
+  test "$(file_fingerprint "${HOME}/.ssh/elyro_known_hosts")" = "${known_hosts_before}"
+  test "$(file_fingerprint "${XDG_STATE_HOME}/elyro/workspaces.json")" = "${registry_before}"
 
   log "go example: workspace up"
   "${BIN}" up \
