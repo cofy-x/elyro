@@ -48,8 +48,8 @@ changelog:
       - '^test:'
 
 release:
-  prerelease: true
-  make_latest: false
+  prerelease: auto
+  make_latest: true
   header: |
-    Elyro {{ .Tag }} is a beta release. See README.md for the supported platform
-    and image matrix.
+    Elyro {{ .Tag }} provides a predictable local Linux Workspace for people and
+    coding agents. See README.md for the supported platform and image matrix.

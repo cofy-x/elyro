@@ -2,6 +2,26 @@
 
 All notable changes to Elyro are documented here. The project follows Semantic Versioning, and pre-1.0 releases may contain intentional breaking changes.
 
+## [0.1.5] - 2026-07-20
+
+Elyro v0.1.5 is the first non-prerelease version and establishes the compatibility baseline for subsequent pre-1.0 updates.
+
+### Added
+
+- Added side-effect-free `elyro up --dry-run` plans with typed create, start, reuse, and recreate actions, stable specification reason codes, resolved project identity, and image availability.
+- Added `elyro down --dry-run` plans that distinguish removal, stale managed-state cleanup, and empty state while explicitly reporting preserved host data.
+
+### Changed
+
+- Actual `up --json` results now include the same stable reasons used by lifecycle planning, and recreated human receipts explain why replacement occurred.
+- Workspace specification comparison is shared by planning, execution, and Doctor diagnostics so previewed and applied actions follow one contract.
+- Release publishing now marks ordinary semantic-version tags as production-ready and latest while retaining automatic prerelease behavior for future suffixed tags.
+
+### Fixed
+
+- Stopped Workspace startup now preserves SSH trust when Docker reassigns the loopback host port but the container host keys remain unchanged.
+- Empty `down` cleanup no longer creates blank managed SSH or known-host files.
+
 ## [0.1.4] - 2026-07-20
 
 ### Added

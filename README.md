@@ -47,6 +47,8 @@ Install from Homebrew:
 brew install cofy-x/tap/elyro
 ```
 
+v0.1.5 is Elyro's first non-prerelease version. The CLI, `elyro.yaml` version 1, JSON schemas, exit codes, and lifecycle meanings form the compatibility baseline for later pre-1.0 releases.
+
 Then enter a Go, Python, Node.js, or Java project and run:
 
 ```bash

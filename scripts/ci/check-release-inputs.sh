@@ -56,6 +56,11 @@ core_files=(
 budget_file=release/image-budgets.json
 
 cd "${ROOT_DIR}"
+require_line .goreleaser.yaml "  prerelease: auto"
+require_line .goreleaser.yaml "  make_latest: true"
+if grep -Fq 'beta release' .goreleaser.yaml; then
+  fail ".goreleaser.yaml still describes a beta release"
+fi
 for file in "${core_files[@]}"; do
   [[ -f "${file}" ]] || fail "missing ${file}"
   if grep -Eq '^(FROM|ARG [A-Z0-9_]+)=?.*:(latest|stable)([^A-Za-z0-9]|$)' "${file}"; then
