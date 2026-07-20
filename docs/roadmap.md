@@ -9,6 +9,7 @@ Elyro is a Mac-first, local-first Linux Workspace for individual developers and 
 | Workspace | Local Linux development environment for one host project |
 | Environment | Named project configuration in `elyro.yaml` |
 | Toolchain | Maintained Python, Go, Node.js, or Java Workspace image |
+| Project image | Project-owned Dockerfile derived from a Toolchain image and built explicitly through Elyro |
 | Skill | Guidance that teaches a host coding agent to use the Elyro CLI |
 
 ## Current priorities
@@ -20,6 +21,7 @@ Elyro is a Mac-first, local-first Linux Workspace for individual developers and 
 - Keep SSH limited to editor handoff and direct user access, with strict isolated host-key trust.
 - Maintain five amd64/arm64 images: `workspace-base`, `workspace-python`, `workspace-go`, `workspace-node`, and `workspace-java`.
 - Keep official Toolchain images limited to the language runtime, primary build or dependency-management tools, and native compilation prerequisites; project-level linters and formatters stay project-owned.
+- Keep persistent project OS tools in an explicit project-owned Dockerfile; never turn ordinary Workspace startup into an implicit package installation or lifecycle-hook runner.
 - Measure cold and warm startup and image size before adding image variants, and reject release candidates that exceed reviewed compressed-size budgets.
 
 ## Explicit non-goals

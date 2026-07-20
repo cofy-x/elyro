@@ -37,7 +37,7 @@ Unknown fields and unsupported configuration versions are errors. `elyro doctor 
 
 ## Environment fields
 
-Each entry below `environments` must set `toolchain`, `image`, or both:
+Each entry below `environments` must set `toolchain`, `image`, or both. A project-owned derived image also sets `build`:
 
 ```yaml
 version: 1
@@ -50,9 +50,19 @@ environments:
   custom-go:
     toolchain: go
     image: example/my-go-workspace:local
+  derived:
+    toolchain: go
+    image: elyro-local/example:dev
+    build:
+      context: .
+      dockerfile: .elyro/Dockerfile
 ```
 
-`toolchain` selects one of Elyro's maintained images and recommended editor settings. `image` selects a project-owned image that satisfies the [custom image contract](custom-images.md). When both are present, the custom image is used and the Toolchain contributes only metadata and editor recommendations. Elyro never builds or automatically pulls an explicitly configured custom image.
+`toolchain` selects one of Elyro's maintained images and recommended editor settings. `image` selects a project-owned image that satisfies the [custom image contract](custom-images.md). When both are present, the custom image is used and the Toolchain contributes metadata and editor recommendations.
+
+`build` declares a project-owned Docker build. It must be paired with `image`; both `context` and `dockerfile` are non-empty paths relative to the project and must remain inside the project after symlinks are resolved. The target image must have an explicit tag other than `latest` and must not use a digest. Elyro only executes this build through `elyro image build`; `elyro up` never builds it implicitly and never automatically pulls an explicitly configured image.
+
+Use `elyro image init` to add this block and a commented `.elyro/Dockerfile` safely. Existing Environments, fields, ordering, and YAML comments are preserved. See [Project-derived and fully custom images](custom-images.md) for ownership and runtime requirements.
 
 `platform` accepts `linux/amd64` or `linux/arm64`. When omitted, Elyro uses the host architecture.
 

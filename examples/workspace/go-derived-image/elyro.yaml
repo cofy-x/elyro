@@ -1,0 +1,9 @@
+version: 1
+default_environment: dev
+environments:
+  dev:
+    toolchain: go
+    image: elyro-local/go-derived-image:dev
+    build:
+      context: .
+      dockerfile: .elyro/Dockerfile

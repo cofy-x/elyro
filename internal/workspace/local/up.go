@@ -83,6 +83,9 @@ func up(ctx context.Context, runtime containerRuntime, request UpRequest) (resul
 		}
 	}
 	if !imageAvailable {
+		if resolvedEnvironment.ImageBuild != nil {
+			return UpResult{}, fmt.Errorf("project Workspace image is missing: %s; run `elyro image build` before `elyro up`", resolvedEnvironment.Image)
+		}
 		if !resolvedEnvironment.CustomImage && resolvedEnvironment.Name == string(resolvedEnvironment.Toolchain) && resolvedEnvironment.Toolchain != "" {
 			return UpResult{}, fmt.Errorf("missing image %s for %s; build or pull it first", resolvedEnvironment.Image, resolvedEnvironment.Platform)
 		}

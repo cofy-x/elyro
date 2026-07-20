@@ -6,7 +6,7 @@ import (
 )
 
 func TestTopLevelCLIContract(t *testing.T) {
-	want := []string{"doctor", "down", "exec", "init", "list", "open", "shell", "skill", "status", "up", "version"}
+	want := []string{"doctor", "down", "exec", "image", "init", "list", "open", "shell", "skill", "status", "up", "version"}
 	cmd := newRootCmd()
 	got := make([]string, 0, len(cmd.Commands()))
 	for _, child := range cmd.Commands() {

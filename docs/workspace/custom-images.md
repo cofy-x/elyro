@@ -1,6 +1,28 @@
-# Custom Workspace Images
+# Project-derived and Custom Workspace Images
 
-Elyro can manage a project-defined Workspace image without requiring that image to
+The recommended way to persist project-specific OS libraries, compilers, database clients, or global CLIs is to derive a project image from an official Elyro Toolchain image:
+
+```bash
+elyro image init
+# edit the commented package example in .elyro/Dockerfile
+elyro image build
+elyro up
+```
+
+The project owns the Dockerfile, package sources, versions, and update policy. Elyro validates the build inputs, invokes Docker without shell interpolation, and reports the result. It does not infer whether an image is stale, build during `up`, add packages itself, pass secrets or build arguments, publish the image, or recreate a running Workspace.
+
+Use the [derived Go image example](../../examples/workspace/go-derived-image/README.md) for the complete Homebrew-installed workflow.
+
+## Choose the right dependency mechanism
+
+- Use `sudo apt` inside a Workspace for temporary investigation; it disappears when the Workspace is recreated.
+- Use the language's project dependency mechanism for linters, formatters, test runners, and application libraries.
+- Use a derived Workspace image for persistent OS libraries, compilers, database clients, and global CLIs.
+- Use Compose or another external tool for multi-service systems, and a Dev Container implementation when Features are required.
+
+## Fully custom images
+
+Elyro can also manage a project-defined Workspace image without requiring that image to
 inherit from an official Elyro image. This is the fully controlled path for an
 individual developer who wants to own the operating system packages,
 toolchains, update policy, and image build.
@@ -10,7 +32,7 @@ image must satisfy the runtime contract below, while Elyro continues to manage
 the project mount, container lifecycle, loopback SSH port, SSH key injection,
 editor handoff, and workspace registration.
 
-## Configure A Custom Image
+## Configure a fully custom image
 
 Build or pull the image before starting the Workspace, then reference it from a
 project environment:
@@ -32,7 +54,7 @@ elyro shell
 An image-only environment uses the host's default `linux/amd64` or `linux/arm64`
 platform. Set `platform` explicitly only when the image and Docker host support
 that target. Elyro does not build or automatically pull an explicitly configured
-image in this first workflow, including environments that also set `toolchain`; a
+image without a `build` block, including environments that also set `toolchain`; a
 missing image fails with an instruction to build or pull it first.
 
 `toolchain` is optional when `image` is set. Adding a built-in toolchain selects that
@@ -88,6 +110,8 @@ the same tag does not replace an already running Workspace; recreate it explicit
 docker build -t my-project-workspace:local -f .elyro/Dockerfile .
 elyro up --recreate
 ```
+
+When an Environment has a `build` block, use `elyro image build` instead. A fully custom image without that block continues to use its own build or pull command.
 
 Start with the verified [from-scratch Ubuntu example](../../examples/workspace/custom-image-from-scratch/README.md). The existing [custom environment example](../../examples/workspace/go-custom-image-environment/README.md) demonstrates the alternative path of extending an official Elyro image.
 

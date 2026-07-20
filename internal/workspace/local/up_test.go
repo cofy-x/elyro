@@ -66,6 +66,28 @@ func TestUpMissingCustomImageSuggestsBuildOrPullWithoutPulling(t *testing.T) {
 	}
 }
 
+func TestUpMissingProjectBuildImageSuggestsImageBuildWithoutTouchingWorkspace(t *testing.T) {
+	projectDir := t.TempDir()
+	if err := os.Mkdir(filepath.Join(projectDir, ".elyro"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(projectDir, ".elyro", "Dockerfile"), []byte("FROM scratch\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	config := []byte("version: 1\ndefault_environment: dev\nenvironments:\n  dev:\n    toolchain: go\n    image: elyro-local/demo:dev\n    build:\n      context: .\n      dockerfile: .elyro/Dockerfile\n")
+	if err := os.WriteFile(filepath.Join(projectDir, "elyro.yaml"), config, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	runtime := &fakeContainerRuntime{byProject: &dockerruntime.Container{Name: "existing-workspace"}}
+	_, err := up(t.Context(), runtime, UpRequest{ProjectDir: projectDir, SSHConfigPath: "/tmp/ssh-config", Recreate: true})
+	if err == nil || !strings.Contains(err.Error(), "elyro image build") {
+		t.Fatalf("up() error = %v, want image build hint", err)
+	}
+	if len(runtime.pulls) != 0 || len(runtime.removes) != 0 {
+		t.Fatalf("preflight changed state: pulls=%#v removes=%#v", runtime.pulls, runtime.removes)
+	}
+}
+
 func TestUpReportsProgressAndPreservesPullError(t *testing.T) {
 	var progress []string
 	_, err := up(t.Context(), &fakeContainerRuntime{pullErr: errors.New("denied: token expired")}, UpRequest{

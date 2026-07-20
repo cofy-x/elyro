@@ -16,7 +16,7 @@ Elyro has one product domain: a local Linux Workspace for a host project. Human 
 
 ## Workspace invariants
 
-- `elyro init` is the only command that writes `elyro.yaml`; zero-config `up` does not create project files.
+- Only explicit initialization commands write project configuration: `elyro init` creates `elyro.yaml`, while `elyro image init` adds the project image build and Dockerfile. Zero-config `up` never creates or builds project files.
 - `shell` and `exec` use local `docker exec` as user `elyro` in the project mount. SSH exists only for editor handoff and direct user access.
 - Container identity stays path-hashed; hostname is the sanitized project name and participates in specification comparison.
 - SSH config and known-hosts records are Elyro-managed and isolated from the user's global trust records.

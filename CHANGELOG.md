@@ -2,6 +2,18 @@
 
 All notable changes to Elyro are documented here. The project follows Semantic Versioning, and pre-1.0 releases may contain intentional breaking changes.
 
+## [Unreleased]
+
+### Added
+
+- Added `elyro image init` to scaffold a project-owned Dockerfile and validated build configuration derived from an official Toolchain image.
+- Added `elyro image build` with argv-safe Docker execution, streamed build logs, typed human receipts, and a schema-1 JSON result.
+
+### Changed
+
+- `elyro up` and schema-2 Doctor diagnostics now distinguish a missing configured project image and direct the user to the explicit build command; ordinary Workspace startup never builds implicitly.
+- Documented when to use temporary Workspace packages, language-native project dependencies, derived Workspace images, or external multi-service and Feature tooling.
+
 ## [0.1.2] - 2026-07-19
 
 ### Changed

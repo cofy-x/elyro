@@ -2,6 +2,8 @@
 
 ```text
 elyro init
+elyro image init
+elyro image build
 elyro up
 elyro down
 elyro shell
@@ -14,7 +16,7 @@ elyro skill
 elyro version
 ```
 
-That is the complete public command surface. Image builds and release maintenance remain repository maintainer operations, not product commands.
+That is the complete public command surface. Release image maintenance remains a repository maintainer operation; `elyro image` manages only a project's explicitly configured image build.
 
 See the [Workspace configuration reference](configuration.md) for the complete `elyro.yaml` contract.
 
@@ -29,9 +31,20 @@ elyro down
 
 `--environment` and `--toolchain` are mutually exclusive. `up --json` never prompts and returns schema 1 with `action`, `duration_ms`, and a public Workspace view. `down` removes the container, managed SSH access, and registry entry; `down --json` returns the same Workspace view plus `removed`.
 
-`up` detects a single Toolchain when possible. Ambiguous or unknown projects must choose `--toolchain` in non-interactive use. Only `init` writes `elyro.yaml`.
+`up` detects a single Toolchain when possible. Ambiguous or unknown projects must choose `--toolchain` in non-interactive use. Only `elyro init` and `elyro image init` write `elyro.yaml`; both are explicit and refuse unsafe or ambiguous writes.
 
 Without an explicit `--project-dir`, project-scoped commands use the nearest `elyro.yaml`, then an existing containing Workspace, then the nearest Git root, and finally the current directory. An explicit path always wins. `up --recreate` replaces an existing Workspace after all configuration, image, mount, publish, and safety checks pass; its JSON action is `recreated`.
+
+## Project image
+
+```bash
+elyro image init [--environment NAME] [--toolchain go] [--image elyro-local/example:dev] [--yes]
+elyro image build [--environment NAME] [--platform linux/arm64] [--pull] [--no-cache] [--json]
+```
+
+`image init` creates `.elyro/Dockerfile` and adds an explicit build definition to `elyro.yaml`. It only derives from an official Toolchain image; a fully independent image remains a manual custom-image workflow. Existing files and build definitions are never overwritten. Non-interactive initialization requires `--image`, and any non-interactive write requires `--yes`.
+
+`image build` invokes `docker build` directly with the configured context, Dockerfile, tag, and platform. Docker owns cache decisions. Build logs stream to stderr, while stdout contains only the final human receipt or schema-1 JSON document. A failed build does not touch the existing Workspace or remove an older local tag; a successful build does not recreate the Workspace. Run `elyro up --recreate` when an existing Workspace should use the rebuilt tag.
 
 ## Execution
 

@@ -46,6 +46,12 @@ type doctorProjectView struct {
 	Image           string                           `json:"image,omitempty"`
 	Platform        string                           `json:"platform,omitempty"`
 	WorkspaceStatus string                           `json:"workspace_status,omitempty"`
+	ImageBuild      *doctorImageBuildView            `json:"image_build,omitempty"`
+}
+
+type doctorImageBuildView struct {
+	Context    string `json:"context"`
+	Dockerfile string `json:"dockerfile"`
 }
 
 type doctorJSONView struct {
@@ -133,6 +139,11 @@ func addProjectDoctorChecks(report *doctorJSONView, projectDir string, explicit 
 	}
 	view := &doctorProjectView{Root: root.Dir, Source: root.Source, ConfigPath: root.ConfigPath}
 	report.Project = view
+	if config, configErr := elyroworkspace.LoadProjectImageConfig(root.Dir); configErr == nil && config != nil {
+		if configured, ok := config.Environments[config.DefaultEnvironment]; ok && configured.HasBuild {
+			view.ImageBuild = &doctorImageBuildView{Context: configured.Context, Dockerfile: configured.Dockerfile}
+		}
+	}
 	report.add(doctorCheck{Scope: "project", Name: "project_root", Status: doctorStatusOK, Message: fmt.Sprintf("Resolved %s project root %s", root.Source, root.Dir)})
 
 	project, err := elyroworkspace.ResolveProjectContext(root.Dir, "", "")
@@ -143,7 +154,11 @@ func addProjectDoctorChecks(report *doctorJSONView, projectDir string, explicit 
 	environment, err := elyroworkspace.ResolveEnvironment(root.Dir, project.MountDir, elyroworkspace.EnvironmentSelection{Platform: elyroworkspace.DefaultPlatform})
 	if err != nil {
 		if projectConfigurationExists(root.Dir) {
-			report.add(doctorCheck{Scope: "project", Name: "workspace_configuration", Status: doctorStatusFail, Message: err.Error()})
+			name := "workspace_configuration"
+			if view.ImageBuild != nil {
+				name = "image_build"
+			}
+			report.add(doctorCheck{Scope: "project", Name: name, Status: doctorStatusFail, Message: err.Error()})
 			return
 		}
 		report.add(doctorCheck{Scope: "project", Name: "workspace_configuration", Status: doctorStatusWarn, Message: fmt.Sprintf("No Workspace Environment is selected: %v; `elyro up` can use an explicit --toolchain", err)})
@@ -157,12 +172,18 @@ func addProjectDoctorChecks(report *doctorJSONView, projectDir string, explicit 
 	view.Toolchain = string(environment.Toolchain)
 	view.Image = environment.Image
 	view.Platform = environment.Platform
+	if environment.ImageBuild != nil {
+		view.ImageBuild = &doctorImageBuildView{Context: environment.ImageBuild.Context, Dockerfile: environment.ImageBuild.Dockerfile}
+		report.add(doctorCheck{Scope: "project", Name: "image_build", Status: doctorStatusOK, Message: fmt.Sprintf("Build inputs are valid: context=%s dockerfile=%s", environment.ImageBuild.Context, environment.ImageBuild.Dockerfile)})
+	}
 	report.add(doctorCheck{Scope: "project", Name: "workspace_configuration", Status: doctorStatusOK, Message: describeEnvironment(environment)})
 
 	if !daemonOK {
 		report.add(doctorCheck{Scope: "project", Name: "workspace_image", Status: doctorStatusWarn, Message: "Workspace image was not checked because the Docker daemon is unavailable"})
 	} else if dockerruntime.ImageExists(context.Background(), environment.Image) {
 		report.add(doctorCheck{Scope: "project", Name: "workspace_image", Status: doctorStatusOK, Message: fmt.Sprintf("Image is available: %s", environment.Image)})
+	} else if environment.ImageBuild != nil {
+		report.add(doctorCheck{Scope: "project", Name: "workspace_image", Status: doctorStatusFail, Message: fmt.Sprintf("Project Workspace image is missing: %s; run `elyro image build`", environment.Image)})
 	} else if environment.CustomImage {
 		report.add(doctorCheck{Scope: "project", Name: "workspace_image", Status: doctorStatusFail, Message: fmt.Sprintf("Custom image is missing: %s; build or pull it before running `elyro up`", environment.Image)})
 	} else {

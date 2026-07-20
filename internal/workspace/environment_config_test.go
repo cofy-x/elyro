@@ -18,6 +18,45 @@ func TestResolveEnvironmentRejectsUnknownFields(t *testing.T) {
 	}
 }
 
+func TestResolveEnvironmentStrictlyParsesImageBuild(t *testing.T) {
+	t.Parallel()
+	for _, build := range []string{
+		"build: null\n",
+		"build:\n      context: .\n      dockerfile: Dockerfile\n      unexpected: true\n",
+		"build:\n      context: .\n      context: other\n      dockerfile: Dockerfile\n",
+	} {
+		projectDir := t.TempDir()
+		config := "version: 1\ndefault_environment: dev\nenvironments:\n  dev:\n    toolchain: go\n    image: elyro-local/demo:dev\n    " + build
+		if err := os.WriteFile(filepath.Join(projectDir, "elyro.yaml"), []byte(config), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := ResolveEnvironment(projectDir, "/home/elyro/demo", EnvironmentSelection{}); err == nil {
+			t.Fatalf("ResolveEnvironment accepted invalid build:\n%s", config)
+		}
+	}
+}
+
+func TestResolveEnvironmentRequiresImageForBuild(t *testing.T) {
+	t.Parallel()
+	projectDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(projectDir, "Dockerfile"), []byte("FROM scratch\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	writeEnvironmentConfig(t, projectDir, `
+default_environment: dev
+environments:
+  dev:
+    toolchain: go
+    build:
+      context: .
+      dockerfile: Dockerfile
+`)
+	_, err := ResolveEnvironment(projectDir, "/home/elyro/demo", EnvironmentSelection{})
+	if err == nil || !strings.Contains(err.Error(), "build requires image") {
+		t.Fatalf("error = %v", err)
+	}
+}
+
 func TestResolveEnvironmentRejectsEnvironmentAndToolchainTogether(t *testing.T) {
 	t.Parallel()
 

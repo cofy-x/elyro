@@ -19,7 +19,10 @@ func TestDoctorJSONSchemaTwo(t *testing.T) {
 		SchemaVersion: 2,
 		Kind:          "doctor",
 		Healthy:       true,
-		Project:       &doctorProjectView{Root: "/tmp/demo", Source: workspace.ProjectRootSourceGit, WorkspaceStatus: "absent"},
+		Project: &doctorProjectView{
+			Root: "/tmp/demo", Source: workspace.ProjectRootSourceGit, WorkspaceStatus: "absent",
+			ImageBuild: &doctorImageBuildView{Context: ".", Dockerfile: ".elyro/Dockerfile"},
+		},
 		Checks: []doctorCheck{{
 			Scope: "system", Name: "docker_cli", Status: doctorStatusOK, Message: "Docker CLI is available",
 		}},
@@ -33,6 +36,11 @@ func TestDoctorJSONSchemaTwo(t *testing.T) {
 	}
 	if got["schema_version"] != float64(2) || got["kind"] != "doctor" || got["healthy"] != true {
 		t.Fatalf("doctor JSON = %#v", got)
+	}
+	project := got["project"].(map[string]any)
+	imageBuild := project["image_build"].(map[string]any)
+	if imageBuild["context"] != "." || imageBuild["dockerfile"] != ".elyro/Dockerfile" {
+		t.Fatalf("doctor image_build = %#v", imageBuild)
 	}
 	checks := got["checks"].([]any)
 	check := checks[0].(map[string]any)

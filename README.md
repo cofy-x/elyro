@@ -30,8 +30,8 @@ Elyro does not install, authenticate, run, or proxy a coding agent. The bundled 
 ## Why Elyro
 
 - Mac-first and local-first: source files and editing stay on the host.
-- Zero-config startup when one Toolchain can be detected; `elyro init` is the only command that writes `elyro.yaml`.
-- Fixed Workspace images for Python, Go, Node.js, and Java, plus a documented custom-image contract.
+- Zero-config startup when one Toolchain can be detected; only explicit `init` commands write project configuration.
+- Maintained Workspace images for Python, Go, Node.js, and Java, with an explicit project-image workflow for persistent OS tools.
 - Direct, argv-safe Linux execution through `elyro exec`; shell syntax is explicit with `bash -lc`.
 - Editor handoff over managed Remote SSH with strict, isolated host-key trust.
 - Small machine contracts for automation: schema 1 for Workspace lifecycle and inspection, plus scoped schema-2 diagnostics.
@@ -58,6 +58,17 @@ elyro up --toolchain go
 ```
 
 Use `elyro init` only when the project needs named Environments, ports, mounts, editor settings, or a custom image.
+
+When a project needs an OS library, compiler, database client, or global CLI, derive a project-owned image from its official Toolchain image. Elyro creates the safe build configuration, while the project keeps ownership of its Dockerfile:
+
+```bash
+elyro image init
+# edit .elyro/Dockerfile
+elyro image build
+elyro up --recreate
+```
+
+Ordinary `elyro up` never builds a Dockerfile or runs project lifecycle hooks.
 
 ## Coding agents
 

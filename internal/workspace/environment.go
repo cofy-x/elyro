@@ -28,6 +28,7 @@ type ResolvedEnvironment struct {
 	Image     string
 	// CustomImage reports that elyro.yaml explicitly selected Image instead of deriving it from the toolchain.
 	CustomImage           bool
+	ImageBuild            *ImageBuild
 	ProjectConfigured     bool
 	Platform              string
 	Docker                DockerOptions
@@ -107,6 +108,16 @@ func (cfg *projectConfig) resolveNamedEnvironment(projectDir, name, mountDir str
 	if environment.Image != "" {
 		resolved.Image = environment.Image
 		resolved.CustomImage = true
+	}
+	if environment.Build.Set {
+		if environment.Image == "" {
+			return ResolvedEnvironment{}, fmt.Errorf("environment %q: build requires image", name)
+		}
+		build, err := ResolveImageBuild(projectDir, environment.Image, environment.Build.Context, environment.Build.Dockerfile)
+		if err != nil {
+			return ResolvedEnvironment{}, fmt.Errorf("environment %q: %w", name, err)
+		}
+		resolved.ImageBuild = &build
 	}
 	if resolved.Image == "" {
 		return ResolvedEnvironment{}, fmt.Errorf("environment %q must set image or toolchain", name)

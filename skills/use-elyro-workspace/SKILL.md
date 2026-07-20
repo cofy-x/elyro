@@ -8,7 +8,7 @@ description: Use Elyro to build, test, and debug the current project inside its 
 Use Elyro as the only interface to the project's local Linux development environment.
 
 1. Inspect the current state with `elyro status --json`.
-2. If no Workspace exists, start one with `elyro up --json`. When Toolchain detection is ambiguous, inspect the project and retry with an explicit `--toolchain`; do not run `elyro init` unless the user asks to create configuration.
+2. If no Workspace exists, start one with `elyro up --json`. When Toolchain detection is ambiguous, inspect the project and retry with an explicit `--toolchain`; do not run `elyro init` or `elyro image init` unless the user asks to create configuration. If an existing build configuration reports that its project image is missing, run `elyro image build --json`, then retry `elyro up --json`.
 3. Run Linux build, test, lint, and debugging commands with `elyro exec -- COMMAND [ARG...]`.
 4. For pipes, redirects, expansion, or compound shell syntax, invoke it explicitly with `elyro exec -- bash -lc '...'`.
 5. If the environment is unhealthy or a prerequisite is missing, inspect `elyro doctor --json` before proposing changes.

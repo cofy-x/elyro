@@ -10,8 +10,9 @@ HOST_HOME="${HOME}"
 export HOME="${TMP_ROOT}/home"
 export DOCKER_CONFIG="${DOCKER_CONFIG:-${HOST_HOME}/.docker}"
 SSH_CONFIG="${HOME}/.ssh/config"
-CASES="${ELYRO_WORKSPACE_E2E_CASES:-python go node java environment}"
+CASES="${ELYRO_WORKSPACE_E2E_CASES:-python go node java environment image}"
 CUSTOM_IMAGE="elyro/workspace-e2e-custom:${RUN_ID}"
+PROJECT_IMAGE="elyro/workspace-e2e-project:${RUN_ID}"
 WORKSPACE_EXEC_PID=""
 WORKSPACE_EXEC_LOG=""
 export XDG_STATE_HOME="${TMP_ROOT}/state"
@@ -151,6 +152,7 @@ cleanup() {
     "${TMP_ROOT}/python-http-service" \
     "${TMP_ROOT}/go-http-service" \
     "${TMP_ROOT}/go-custom-image-environment" \
+    "${TMP_ROOT}/go-project-image" \
     "${TMP_ROOT}/node-test" \
     "${TMP_ROOT}/java-test"; do
     if [ -d "${project_dir}" ]; then
@@ -162,6 +164,7 @@ cleanup() {
     fi
   done
   docker image rm -f "${CUSTOM_IMAGE}" >/dev/null 2>&1 || true
+  docker image rm -f "${PROJECT_IMAGE}" >/dev/null 2>&1 || true
   rm -rf "${TMP_ROOT}"
 }
 trap cleanup EXIT
@@ -411,6 +414,85 @@ run_environment_case() {
   workspace_down "${project_dir}"
 }
 
+run_project_image_case() {
+  local project_dir nested_dir dockerfile report running_container recreated_container
+
+  project_dir="$(copy_example go-http-service)"
+  mv "${project_dir}" "${TMP_ROOT}/go-project-image"
+  project_dir="$(cd "${TMP_ROOT}/go-project-image" && pwd -P)"
+  git -C "${project_dir}" init -q
+  nested_dir="${project_dir}/internal/e2e/nested"
+  mkdir -p "${nested_dir}"
+
+  log "project image: initialize from nested directory"
+  (cd "${nested_dir}" && "${BIN}" image init --toolchain go --image "${PROJECT_IMAGE}" --yes) | grep -Fq 'elyro image build'
+  dockerfile="${project_dir}/.elyro/Dockerfile"
+  test -f "${dockerfile}"
+  grep -Fq "image: ${PROJECT_IMAGE}" "${project_dir}/elyro.yaml"
+
+  report="${TMP_ROOT}/project-image-doctor.json"
+  if (cd "${nested_dir}" && "${BIN}" doctor --json) >"${report}" 2>/dev/null; then
+    printf '[workspace-e2e] expected missing project image to make doctor fail\n' >&2
+    return 1
+  fi
+  jq -e '
+    .schema_version == 2 and .healthy == false and
+    .project.image_build.context == "." and
+    .project.image_build.dockerfile == ".elyro/Dockerfile" and
+    any(.checks[]; .name == "workspace_image" and .status == "fail")
+  ' "${report}" >/dev/null
+
+  sed -e 's/^# RUN /RUN /' -e 's/^#     /    /' "${dockerfile}" >"${dockerfile}.tmp"
+  mv "${dockerfile}.tmp" "${dockerfile}"
+
+  log "project image: cold and warm builds"
+  (cd "${nested_dir}" && "${BIN}" image build --json) >"${TMP_ROOT}/project-image-cold.json" 2>"${TMP_ROOT}/project-image-cold.log"
+  test -s "${TMP_ROOT}/project-image-cold.log"
+  jq -e --arg image "${PROJECT_IMAGE}" '.kind == "image" and .action == "built" and .image.reference == $image' "${TMP_ROOT}/project-image-cold.json" >/dev/null
+  NO_COLOR=1 "${BIN}" image build --project-dir "${project_dir}" >"${TMP_ROOT}/project-image-warm.out" 2>"${TMP_ROOT}/project-image-warm.log"
+  grep -Fq 'Workspace image built' "${TMP_ROOT}/project-image-warm.out"
+  if LC_ALL=C grep -q "$(printf '\033')" "${TMP_ROOT}/project-image-warm.out"; then
+    printf '[workspace-e2e] plain project image receipt contains ANSI\n' >&2
+    return 1
+  fi
+
+  log "project image: start and verify derived tool"
+  (cd "${nested_dir}" && "${BIN}" up --json) | jq -e --arg image "${PROJECT_IMAGE}" '.action == "created" and .workspace.image == $image' >/dev/null
+  test "$(cd "${nested_dir}" && "${BIN}" exec -- sqlite3 :memory: 'select 42;')" = 42
+  (cd "${nested_dir}" && "${BIN}" open --print) | grep -Fq 'vscode-remote://ssh-remote+elyro-'
+  running_container="$(container_for_project "${project_dir}")"
+  test -n "${running_container}"
+
+  log "project image: failed build preserves old image and running Workspace"
+  cp "${dockerfile}" "${dockerfile}.good"
+  printf '%s\n' 'RUN false' >>"${dockerfile}"
+  if "${BIN}" image build --project-dir "${project_dir}" --json >"${TMP_ROOT}/project-image-fail.json" 2>"${TMP_ROOT}/project-image-fail.log"; then
+    printf '[workspace-e2e] intentionally broken project image build passed\n' >&2
+    return 1
+  fi
+  test ! -s "${TMP_ROOT}/project-image-fail.json"
+  assert_status_field "${project_dir}" status running
+  test "$("${BIN}" exec --project-dir "${project_dir}" -- sqlite3 :memory: 'select 42;')" = 42
+  mv "${dockerfile}.good" "${dockerfile}"
+
+  log "project image: same-tag rebuild requires explicit recreate"
+  printf '%s\n' "RUN printf '%s\\n' '#!/bin/sh' 'echo elyro-image-e2e-v2' > /usr/local/bin/elyro-image-e2e-tool && chmod +x /usr/local/bin/elyro-image-e2e-tool" >>"${dockerfile}"
+  "${BIN}" image build --project-dir "${project_dir}" --json >"${TMP_ROOT}/project-image-rebuild.json" 2>"${TMP_ROOT}/project-image-rebuild.log"
+  if "${BIN}" exec --project-dir "${project_dir}" -- elyro-image-e2e-tool >/dev/null 2>&1; then
+    printf '[workspace-e2e] running Workspace changed without recreate\n' >&2
+    return 1
+  fi
+  "${BIN}" up --project-dir "${project_dir}" --recreate --json | jq -e '.action == "recreated"' >/dev/null
+  recreated_container="$(container_for_project "${project_dir}")"
+  test -n "${recreated_container}"
+  test "${recreated_container}" != "${running_container}"
+  test "$("${BIN}" exec --project-dir "${project_dir}" -- elyro-image-e2e-tool)" = elyro-image-e2e-v2
+  "${BIN}" exec --project-dir "${project_dir}" -- go test ./...
+
+  log "project image: workspace down"
+  workspace_down "${project_dir}"
+}
+
 run_doctor_unconfigured_case() {
   local project_dir report
 
@@ -466,6 +548,7 @@ main() {
       node) run_node_case ;;
       java) run_java_case ;;
       environment) run_environment_case ;;
+      image) run_project_image_case ;;
       *) printf '[workspace-e2e] unknown case: %s\n' "${case_name}" >&2; exit 1 ;;
     esac
   done

@@ -38,6 +38,7 @@ func newRootCmd() *cobra.Command {
 		newDoctorCmd(),
 		newInitCmd(),
 		newVersionCmd(),
+		workspacecli.NewImageCmd(),
 		workspacecli.NewSkillCmd(),
 	)
 	rootCmd.AddCommand(workspacecli.NewWorkspaceCommands()...)
@@ -62,7 +63,7 @@ func printCommandHelp(cmd *cobra.Command, _ []string) {
 		commands []string
 	}{
 		{"Workspace", []string{"up", "down", "shell", "exec", "open", "status", "list"}},
-		{"Project", []string{"init"}},
+		{"Project", []string{"init", "image"}},
 		{"Agent", []string{"skill"}},
 		{"Diagnostics", []string{"doctor", "version", "help"}},
 	} {
