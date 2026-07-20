@@ -24,6 +24,10 @@ func Down(ctx context.Context, request DownRequest) (DownResult, error) {
 	return down(ctx, dockerContainerRuntime{}, request)
 }
 
+func ApplyDown(ctx context.Context, request DownRequest, plan DownPlan) (DownResult, error) {
+	return applyDown(ctx, dockerContainerRuntime{}, request, plan)
+}
+
 func down(ctx context.Context, runtime containerRuntime, request DownRequest) (DownResult, error) {
 	projectCtx, err := resolveProject(request.ProjectDir, request.ContainerName, request.HostAlias)
 	if err != nil {
@@ -33,7 +37,12 @@ func down(ctx context.Context, runtime containerRuntime, request DownRequest) (D
 	if err != nil {
 		return DownResult{}, err
 	}
+	return applyDown(ctx, runtime, request, DownPlan{Project: projectCtx, Container: info})
+}
 
+func applyDown(ctx context.Context, runtime containerRuntime, request DownRequest, plan DownPlan) (DownResult, error) {
+	projectCtx := plan.Project
+	info := plan.Container
 	resolvedAlias := projectCtx.HostAlias
 	if info != nil {
 		if info.HostAlias != "" {

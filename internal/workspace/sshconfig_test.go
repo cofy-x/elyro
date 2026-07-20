@@ -164,3 +164,13 @@ func TestRemoveManagedSSHHost(t *testing.T) {
 		t.Fatalf("non-managed entry was removed unexpectedly:\n%s", string(data))
 	}
 }
+
+func TestRemoveManagedSSHHostDoesNotCreateMissingConfig(t *testing.T) {
+	path := filepath.Join(t.TempDir(), ".ssh", "config")
+	if err := RemoveManagedSSHHost(path, "elyro-demo"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Fatalf("missing SSH config was created: %v", err)
+	}
+}

@@ -16,6 +16,7 @@ Elyro is a Mac-first, local-first Linux Workspace for individual developers and 
 ## Current priorities
 
 - Keep `elyro up --open` a verifiable one-command human path.
+- Keep Workspace mutations predictable through side-effect-free `up` and `down` plans with stable machine-readable actions and reasons.
 - Keep JSON output stable and stdout clean for coding-agent automation.
 - Keep the human CLI recognizable and calm with semantic terminal hierarchy, without adding a full-screen UI or changing stream behavior.
 - Preserve direct argv execution, exit codes, stdin, signals, project workdir, and predictable hostname.

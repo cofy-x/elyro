@@ -37,7 +37,7 @@ Unknown fields and unsupported configuration versions are errors. `elyro doctor 
 - Without either flag, Elyro uses `default_environment` when it is set; otherwise it detects exactly one Toolchain from project markers.
 - `--platform` overrides the configured platform.
 - Repeated `--publish` values merge with `docker.publish`; conflicting mappings for the same host port are rejected.
-- Changing the resolved Environment, image reference, platform, ports, mounts, effective runtime environment, privileged mode, or hostname causes `elyro up` to recreate the Workspace. Use `elyro up --recreate` when a custom image was rebuilt under the same tag.
+- Changing the resolved Environment, image reference, platform, ports, mounts, effective runtime environment, privileged mode, or hostname causes `elyro up` to recreate the Workspace. Use `elyro up --dry-run` to inspect the exact reasons first. Use `elyro up --recreate` when a custom image was rebuilt under the same tag.
 
 ## Environment fields
 

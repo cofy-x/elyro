@@ -3,6 +3,7 @@
 A Workspace mounts one host project into a local Linux container. Elyro owns image selection, lifecycle, project mount, direct command execution, SSH editor access, and registry metadata.
 
 ```bash
+elyro up --dry-run --toolchain go
 elyro up --toolchain go
 elyro status --json
 elyro exec -- go test ./...
@@ -10,6 +11,8 @@ elyro shell
 elyro open --editor cursor
 elyro down
 ```
+
+`up --dry-run` explains whether the next lifecycle operation will create, start, reuse, or recreate the Workspace. `down --dry-run` identifies every Elyro-managed resource that would be removed and confirms that project files, mounted host data, and local images remain.
 
 `shell` and `exec` use local Docker directly. SSH is configured only for Remote SSH and direct user access. The container hostname is the sanitized project name; the unique container name still contains a project-path hash.
 

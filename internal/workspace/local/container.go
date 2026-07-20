@@ -8,85 +8,50 @@ import (
 	dockerruntime "github.com/cofy-x/elyro/internal/workspace/runtime/docker"
 )
 
-func ensureContainer(ctx context.Context, runtime containerRuntime, projectCtx workspace.ProjectContext, environment workspace.ResolvedEnvironment, publishes []workspace.PortPublish, normalizedPublishes, normalizedMounts, privilegedLabel, sshPort string, recreate bool) (*dockerruntime.Container, WorkspaceAction, error) {
-	info, err := runtime.InspectByProject(ctx, projectCtx.ProjectDir)
-	if err != nil {
-		return nil, "", err
-	}
-
-	recreating := false
-	if recreate && info != nil {
-		recreating = true
+func executeContainerPlan(ctx context.Context, runtime containerRuntime, plan UpPlan, sshPort string) (*dockerruntime.Container, WorkspaceAction, error) {
+	info := plan.Container
+	switch plan.Action {
+	case WorkspacePlanActionRecreate:
+		if info == nil {
+			return nil, "", fmt.Errorf("invalid recreate plan without an existing workspace")
+		}
 		if err := runtime.Remove(ctx, info.Name); err != nil {
 			return nil, "", err
 		}
 		info = nil
-	}
-
-	if info != nil {
-		if !ContainerSpecificationMatches(info, projectCtx, environment, normalizedPublishes, normalizedMounts, privilegedLabel) {
-			recreating = true
-			if err := runtime.Remove(ctx, info.Name); err != nil {
-				return nil, "", err
-			}
-			info = nil
-		} else if info.Status != "running" {
-			if err := runtime.Start(ctx, info.Name); err != nil {
-				return nil, "", err
-			}
-			info, err = runtime.Inspect(ctx, info.Name)
-			if err != nil {
-				return nil, "", err
-			}
-			return info, WorkspaceActionStarted, nil
+	case WorkspacePlanActionStart:
+		if info == nil {
+			return nil, "", fmt.Errorf("invalid start plan without an existing workspace")
 		}
-	}
-
-	if info != nil {
+		if err := runtime.Start(ctx, info.Name); err != nil {
+			return nil, "", err
+		}
+		started, err := runtime.Inspect(ctx, info.Name)
+		return started, WorkspaceActionStarted, err
+	case WorkspacePlanActionReuse:
+		if info == nil {
+			return nil, "", fmt.Errorf("invalid reuse plan without an existing workspace")
+		}
 		return info, WorkspaceActionReused, nil
+	case WorkspacePlanActionCreate:
+		if info != nil {
+			return nil, "", fmt.Errorf("invalid create plan with an existing workspace")
+		}
+	default:
+		return nil, "", fmt.Errorf("unsupported workspace plan action %q", plan.Action)
 	}
-
-	occupied, err := runtime.InspectByName(ctx, projectCtx.ContainerName)
+	if err := runtime.Run(ctx, dockerRunArgs(plan.Project, plan.Environment, plan.Publishes, plan.Published, plan.Mounts, plan.PrivilegedLabel, sshPort)...); err != nil {
+		return nil, "", err
+	}
+	created, err := runtime.Inspect(ctx, plan.Project.ContainerName)
 	if err != nil {
+		_ = runtime.Remove(ctx, plan.Project.ContainerName)
 		return nil, "", err
 	}
-	if occupied != nil && occupied.ProjectDir != "" && occupied.ProjectDir != projectCtx.ProjectDir {
-		return nil, "", fmt.Errorf("container name %s is already in use by project %s", projectCtx.ContainerName, occupied.ProjectDir)
+	if plan.Action == WorkspacePlanActionRecreate {
+		return created, WorkspaceActionRecreated, nil
 	}
-	if occupied != nil && occupied.ProjectDir == "" {
-		return nil, "", fmt.Errorf("container name %s is already in use by a non-workspace container", projectCtx.ContainerName)
-	}
-
-	if err := runtime.Run(ctx, dockerRunArgs(projectCtx, environment, publishes, normalizedPublishes, normalizedMounts, privilegedLabel, sshPort)...); err != nil {
-		return nil, "", err
-	}
-	info, err = runtime.Inspect(ctx, projectCtx.ContainerName)
-	if err != nil {
-		_ = runtime.Remove(ctx, projectCtx.ContainerName)
-		return nil, "", err
-	}
-	if recreating {
-		return info, WorkspaceActionRecreated, nil
-	}
-	return info, WorkspaceActionCreated, nil
-}
-
-func ContainerSpecificationMatches(info *dockerruntime.Container, projectCtx workspace.ProjectContext, environment workspace.ResolvedEnvironment, normalizedPublishes, normalizedMounts, privilegedLabel string) bool {
-	if info == nil {
-		return false
-	}
-	currentImage := info.ImageLabel
-	if currentImage == "" {
-		currentImage = info.Image
-	}
-	return displayEnvironment(info.Environment, info.Toolchain) == environment.Name &&
-		currentImage == environment.Image &&
-		displayPlatform(info.Platform) == environment.Platform &&
-		info.Hostname == projectCtx.Slug &&
-		info.Published == normalizedPublishes &&
-		info.Privileged == privilegedLabel &&
-		info.Mounts == normalizedMounts &&
-		info.RuntimeEnvironmentDigest == environment.Docker.RuntimeEnvironment.Digest
+	return created, WorkspaceActionCreated, nil
 }
 
 func displayEnvironment(environment, toolchain string) string {

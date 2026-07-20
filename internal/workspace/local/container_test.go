@@ -2,9 +2,11 @@ package local
 
 import (
 	"context"
+	"fmt"
 	"slices"
 	"testing"
 
+	"github.com/cofy-x/elyro/internal/workspace"
 	dockerruntime "github.com/cofy-x/elyro/internal/workspace/runtime/docker"
 )
 
@@ -18,7 +20,7 @@ func TestEnsureContainerReusesRunningContainer(t *testing.T) {
 		byProject: testContainer(project, environment, "running"),
 	}
 
-	info, action, err := ensureContainer(ctx, runtime, project, environment, nil, "", "", "false", "", false)
+	info, action, err := ensureTestContainer(ctx, runtime, project, environment, nil, "", "", "false", "", false)
 	if err != nil {
 		t.Fatalf("ensureContainer() error = %v", err)
 	}
@@ -46,7 +48,7 @@ func TestEnsureContainerStartsStoppedContainer(t *testing.T) {
 		},
 	}
 
-	info, action, err := ensureContainer(ctx, runtime, project, environment, nil, "", "", "false", "", false)
+	info, action, err := ensureTestContainer(ctx, runtime, project, environment, nil, "", "", "false", "", false)
 	if err != nil {
 		t.Fatalf("ensureContainer() error = %v", err)
 	}
@@ -76,7 +78,7 @@ func TestEnsureContainerRebuildsMismatchedContainer(t *testing.T) {
 		},
 	}
 
-	_, action, err := ensureContainer(ctx, runtime, project, environment, nil, "", "", "false", "", false)
+	_, action, err := ensureTestContainer(ctx, runtime, project, environment, nil, "", "", "false", "", false)
 	if err != nil {
 		t.Fatalf("ensureContainer() error = %v", err)
 	}
@@ -104,7 +106,7 @@ func TestEnsureContainerRecreatesMatchingContainerWhenRequested(t *testing.T) {
 		},
 	}
 
-	_, action, err := ensureContainer(ctx, runtime, project, environment, nil, "", "", "false", "", true)
+	_, action, err := ensureTestContainer(ctx, runtime, project, environment, nil, "", "", "false", "", true)
 	if err != nil {
 		t.Fatalf("ensureContainer() error = %v", err)
 	}
@@ -142,7 +144,7 @@ func TestEnsureContainerRecreateActionCoversExistingAndAbsentWorkspaces(t *testi
 					project.ContainerName: testContainer(project, environment, "running"),
 				},
 			}
-			_, action, err := ensureContainer(t.Context(), runtime, project, environment, nil, "", "", "false", "", true)
+			_, action, err := ensureTestContainer(t.Context(), runtime, project, environment, nil, "", "", "false", "", true)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -169,11 +171,39 @@ func TestEnsureContainerRejectsContainerNameOwnedByOtherProject(t *testing.T) {
 		},
 	}
 
-	_, _, err := ensureContainer(ctx, runtime, project, environment, nil, "", "", "false", "", false)
+	_, _, err := ensureTestContainer(ctx, runtime, project, environment, nil, "", "", "false", "", false)
 	if err == nil {
 		t.Fatal("ensureContainer() error = nil, want conflict")
 	}
 	if len(runtime.runs) != 0 {
 		t.Fatalf("runs = %v, want none", runtime.runs)
 	}
+}
+
+func ensureTestContainer(ctx context.Context, runtime containerRuntime, project workspace.ProjectContext, environment workspace.ResolvedEnvironment, publishes []workspace.PortPublish, normalizedPublishes, normalizedMounts, privilegedLabel, sshPort string, recreate bool) (*dockerruntime.Container, WorkspaceAction, error) {
+	info, err := runtime.InspectByProject(ctx, project.ProjectDir)
+	if err != nil {
+		return nil, "", err
+	}
+	if info == nil {
+		occupied, inspectErr := runtime.InspectByName(ctx, project.ContainerName)
+		if inspectErr != nil {
+			return nil, "", inspectErr
+		}
+		if occupied != nil {
+			return nil, "", fmt.Errorf("container name conflict")
+		}
+	}
+	action, reasons := planContainerAction(info, project, environment, normalizedPublishes, normalizedMounts, privilegedLabel, recreate)
+	return executeContainerPlan(ctx, runtime, UpPlan{
+		Project:         project,
+		Environment:     environment,
+		Container:       info,
+		Action:          action,
+		Reasons:         reasons,
+		Publishes:       publishes,
+		Published:       normalizedPublishes,
+		Mounts:          normalizedMounts,
+		PrivilegedLabel: privilegedLabel,
+	}, sshPort)
 }

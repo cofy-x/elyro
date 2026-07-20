@@ -160,6 +160,19 @@ func RemoveFile(path, projectDir string) error {
 	return Save(path, store)
 }
 
+func HasWorkspaceRecord(store Store, projectDir string) (bool, error) {
+	projectDir, err := cleanAbs(projectDir)
+	if err != nil {
+		return false, fmt.Errorf("project_dir: %w", err)
+	}
+	for _, record := range store.Workspaces {
+		if record.Kind == KindWorkspace && physicalPath(record.ProjectDir) == physicalPath(projectDir) {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 func Current(store Store, cwd string) (Record, error) {
 	abs, err := filepath.Abs(cwd)
 	if err != nil {

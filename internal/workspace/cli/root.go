@@ -28,9 +28,17 @@ func NewWorkspaceCommands() []*cobra.Command {
 }
 
 func resolvedProjectDir(cmd *cobra.Command, opts *GlobalOptions) (string, error) {
-	root, err := workspace.ResolveProjectRoot(opts.ProjectDir, cmd.Flags().Changed("project-dir"))
+	root, err := resolvedProjectRoot(cmd, opts)
 	if err != nil {
 		return "", err
 	}
 	return root.Dir, nil
+}
+
+func resolvedProjectRoot(cmd *cobra.Command, opts *GlobalOptions) (workspace.ProjectRoot, error) {
+	root, err := workspace.ResolveProjectRoot(opts.ProjectDir, cmd.Flags().Changed("project-dir"))
+	if err != nil {
+		return workspace.ProjectRoot{}, err
+	}
+	return root, nil
 }

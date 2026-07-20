@@ -26,14 +26,20 @@ See the [Workspace configuration reference](configuration.md) for the complete `
 elyro up [--toolchain python|go|node|java | --environment NAME] [--platform linux/amd64|linux/arm64]
 elyro up --open [--editor cursor|code]
 elyro up --recreate
+elyro up --dry-run [--recreate] [--json]
 elyro down
+elyro down --dry-run [--json]
 ```
 
-`--environment` and `--toolchain` are mutually exclusive. `up --json` never prompts and returns schema 1 with `action`, `duration_ms`, and a public Workspace view. Runtime environment values, variable names, files, and fingerprints are not added to lifecycle JSON or the registry. `down` removes the container, managed SSH access, and registry entry; `down --json` returns the same Workspace view plus `removed`.
+`--environment` and `--toolchain` are mutually exclusive. `up --json` never prompts and returns schema 1 with `action`, stable `reasons`, `duration_ms`, and a public Workspace view. Runtime environment values, variable names, files, and fingerprints are not added to lifecycle JSON or the registry. `down` removes the container, managed SSH access, and registry entry; `down --json` returns the same Workspace view plus `removed`.
+
+`up --dry-run` uses the real project and Workspace resolver without changing local state. Its schema-1 `workspace_plan` document reports `create`, `start`, `reuse`, or `recreate`, stable reason codes, project-root source, desired Workspace fields, and whether the official image is available or would be pulled. Missing project/custom images and invalid or unsafe inputs still fail. It never pulls, creates an SSH identity, starts or removes a container, or writes managed files. `--dry-run` cannot be combined with `--open` or `--editor`.
+
+`down --dry-run` reports `remove` when a container exists, `cleanup` for stale managed state, and `none` when nothing is owned by Elyro. Its `removes` list covers the container writable layer, managed SSH, known-host trust, and registry record as applicable; `preserves` always identifies project files, mounted host data, and local images. Actual `down` remains non-interactive.
 
 `up` detects a single Toolchain when possible. Ambiguous or unknown projects must choose `--toolchain` in non-interactive use. Only `elyro init` and `elyro image init` write `elyro.yaml`; both are explicit and refuse unsafe or ambiguous writes.
 
-Without an explicit `--project-dir`, project-scoped commands use the nearest `elyro.yaml`, then an existing containing Workspace, then the nearest Git root, and finally the current directory. An explicit path always wins. `up --recreate` replaces an existing Workspace after all configuration, image, mount, publish, and safety checks pass; its JSON action is `recreated`.
+Without an explicit `--project-dir`, project-scoped commands use the nearest `elyro.yaml`, then an existing containing Workspace, then the nearest Git root, and finally the current directory. An explicit path always wins. `up --recreate` replaces an existing Workspace after all configuration, image, mount, publish, managed-state, name-conflict, and safety checks pass; its JSON action is `recreated` with reason `explicit_recreate`.
 
 ## Project image
 

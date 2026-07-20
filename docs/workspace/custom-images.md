@@ -15,7 +15,7 @@ Use the [derived Go image example](../../examples/workspace/go-derived-image/REA
 
 ## Choose the right dependency mechanism
 
-- Use `sudo apt` inside a Workspace for temporary investigation; it disappears when the Workspace is recreated.
+- Use `sudo apt` inside a Workspace for temporary investigation; it disappears when the Workspace is recreated or removed.
 - Use the language's project dependency mechanism for linters, formatters, test runners, and application libraries.
 - Use a derived Workspace image for persistent OS libraries, compilers, database clients, and global CLIs.
 - Use Compose or another external tool for multi-service systems, and a Dev Container implementation when Features are required.
@@ -110,6 +110,7 @@ the same tag does not replace an already running Workspace; recreate it explicit
 
 ```bash
 docker build -t my-project-workspace:local -f .elyro/Dockerfile .
+elyro up --dry-run --recreate
 elyro up --recreate
 ```
 

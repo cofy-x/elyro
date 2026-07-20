@@ -30,6 +30,14 @@ func ValidateManagedSSHHost(path, alias string) error {
 	return nil
 }
 
+func HasManagedSSHHost(path, alias string) (bool, error) {
+	content, err := readSSHConfig(path)
+	if err != nil {
+		return false, err
+	}
+	return strings.Contains(content, managedSSHBegin(alias)) || strings.Contains(content, managedSSHEnd(alias)), nil
+}
+
 func ValidateManagedSSHHostEntry(path string, entry SSHHostEntry) error {
 	if err := ValidateManagedSSHHost(path, entry.HostAlias); err != nil {
 		return err
@@ -73,10 +81,11 @@ func UpsertManagedSSHHost(path string, entry SSHHostEntry) error {
 func RemoveManagedSSHHost(path, alias string) error {
 	content, err := readSSHConfig(path)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return nil
-		}
 		return err
+	}
+	present := strings.Contains(content, managedSSHBegin(alias)) || strings.Contains(content, managedSSHEnd(alias))
+	if !present {
+		return nil
 	}
 	updated := removeManagedBlock(content, alias)
 	return writeFileWithParents(path, strings.TrimLeft(updated, "\n"))

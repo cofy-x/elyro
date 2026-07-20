@@ -56,23 +56,23 @@ func prepareKnownSSHHost(ctx context.Context, path, alias, containerID, host, po
 // trusted algorithm must still match, and an algorithm that appears in both
 // scans must never change its key.
 func mergeKnownSSHKeys(previous, current string) (string, bool) {
-	previousByAlgorithm, ok := knownSSHKeysByAlgorithm(previous)
+	previousByAlgorithm, _, ok := knownSSHKeysByAlgorithm(previous)
 	if !ok {
 		return exactKnownSSHKeys(previous, current)
 	}
-	currentByAlgorithm, ok := knownSSHKeysByAlgorithm(current)
+	currentByAlgorithm, currentEndpoint, ok := knownSSHKeysByAlgorithm(current)
 	if !ok {
 		return exactKnownSSHKeys(previous, current)
 	}
 
 	shared := false
-	for algorithm, previousLine := range previousByAlgorithm {
-		currentLine, present := currentByAlgorithm[algorithm]
+	for algorithm, previousKey := range previousByAlgorithm {
+		currentKey, present := currentByAlgorithm[algorithm]
 		if !present {
 			continue
 		}
 		shared = true
-		if previousLine != currentLine {
+		if previousKey != currentKey {
 			return "", false
 		}
 	}
@@ -81,11 +81,11 @@ func mergeKnownSSHKeys(previous, current string) (string, bool) {
 	}
 
 	merged := make([]string, 0, len(previousByAlgorithm)+len(currentByAlgorithm))
-	for algorithm, line := range currentByAlgorithm {
-		previousByAlgorithm[algorithm] = line
+	for algorithm, key := range currentByAlgorithm {
+		previousByAlgorithm[algorithm] = key
 	}
-	for _, line := range previousByAlgorithm {
-		merged = append(merged, line)
+	for _, key := range previousByAlgorithm {
+		merged = append(merged, currentEndpoint+" "+key)
 	}
 	sort.Strings(merged)
 	return strings.Join(merged, "\n"), true
@@ -98,20 +98,27 @@ func exactKnownSSHKeys(previous, current string) (string, bool) {
 	return previous, true
 }
 
-func knownSSHKeysByAlgorithm(keys string) (map[string]string, bool) {
+func knownSSHKeysByAlgorithm(keys string) (map[string]string, string, bool) {
 	byAlgorithm := make(map[string]string)
+	endpoint := ""
 	for _, line := range strings.Split(keys, "\n") {
 		fields := strings.Fields(line)
 		if len(fields) < 3 {
-			return nil, false
+			return nil, "", false
+		}
+		if endpoint == "" {
+			endpoint = fields[0]
+		} else if endpoint != fields[0] {
+			return nil, "", false
 		}
 		algorithm := fields[1]
-		if existing, found := byAlgorithm[algorithm]; found && existing != line {
-			return nil, false
+		key := strings.Join(fields[1:], " ")
+		if existing, found := byAlgorithm[algorithm]; found && existing != key {
+			return nil, "", false
 		}
-		byAlgorithm[algorithm] = line
+		byAlgorithm[algorithm] = key
 	}
-	return byAlgorithm, len(byAlgorithm) > 0
+	return byAlgorithm, endpoint, len(byAlgorithm) > 0
 }
 
 func RemoveKnownSSHHost(path, alias string) error {
@@ -119,7 +126,20 @@ func RemoveKnownSSHHost(path, alias string) error {
 	if err != nil {
 		return err
 	}
+	prefix := "# ELYRO_WORKSPACE_KNOWN_HOST_BEGIN " + alias + " "
+	if !strings.Contains(content, prefix) && !strings.Contains(content, knownHostEnd(alias)) {
+		return nil
+	}
 	return writeFileWithParents(path, strings.TrimLeft(removeKnownHostBlock(content, alias), "\n"))
+}
+
+func HasKnownSSHHost(path, alias string) (bool, error) {
+	content, err := readSSHConfig(path)
+	if err != nil {
+		return false, err
+	}
+	prefix := "# ELYRO_WORKSPACE_KNOWN_HOST_BEGIN " + alias + " "
+	return strings.Contains(content, prefix) || strings.Contains(content, knownHostEnd(alias)), nil
 }
 
 func ValidateKnownSSHHost(path, alias, containerID string) error {

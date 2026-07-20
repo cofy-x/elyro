@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"strings"
 
 	elyroversion "github.com/cofy-x/elyro/internal/version"
 	"github.com/cofy-x/elyro/internal/workspace"
@@ -39,6 +38,7 @@ type UpResult struct {
 	SSHConfigPath   string
 	IdentityFile    string
 	Action          WorkspaceAction
+	Reasons         []WorkspaceChangeReason
 	PrivilegedLabel string
 	Published       string
 	Mounts          string
@@ -50,68 +50,30 @@ func Up(ctx context.Context, request UpRequest) (result UpResult, err error) {
 
 func up(ctx context.Context, runtime containerRuntime, request UpRequest) (result UpResult, err error) {
 	reportProgress(request, "Preparing Workspace")
-	projectCtx, err := resolveProject(request.ProjectDir, request.ContainerName, request.HostAlias)
+	plan, err := planUp(ctx, runtime, request)
 	if err != nil {
 		return UpResult{}, err
 	}
-	resolvedEnvironment, err := workspace.ResolveEnvironment(projectCtx.ProjectDir, projectCtx.MountDir, workspace.EnvironmentSelection{
-		Environment:         request.Environment,
-		Toolchain:           request.Toolchain,
-		Platform:            request.Platform,
-		EnvironmentExplicit: request.EnvironmentExplicit,
-		ToolchainExplicit:   request.ToolchainExplicit,
-		PlatformExplicit:    request.PlatformExplicit,
-	})
-	if err != nil {
-		return UpResult{}, err
-	}
-	unsafeReasons := workspace.UnsafeEnvironmentReasons(projectCtx.ProjectDir, resolvedEnvironment.Docker)
-	if len(unsafeReasons) > 0 && !request.AllowUnsafeEnvironment {
-		return UpResult{}, fmt.Errorf("unsafe workspace environment requires --allow-unsafe-environment: %s", strings.Join(unsafeReasons, "; "))
-	}
-
-	imageAvailable := runtime.ImageExists(ctx, resolvedEnvironment.Image)
-	if !imageAvailable {
-		if resolvedEnvironment.Toolchain != "" && !resolvedEnvironment.CustomImage {
-			if puller, ok := runtime.(imagePuller); ok {
-				reportProgress(request, "Pulling "+workspaceImageDisplayName(resolvedEnvironment)+" Workspace image")
-				if pullErr := puller.Pull(ctx, resolvedEnvironment.Image, request.PullOutput); pullErr != nil {
-					return UpResult{}, imagePullError(resolvedEnvironment, pullErr)
-				}
-				imageAvailable = runtime.ImageExists(ctx, resolvedEnvironment.Image)
-			}
+	if plan.ImageStatus == WorkspaceImageStatusPullRequired {
+		puller, ok := runtime.(imagePuller)
+		if !ok {
+			return UpResult{}, fmt.Errorf("missing image %s for %s; build or pull it first", plan.Environment.Image, plan.Environment.Platform)
 		}
-	}
-	if !imageAvailable {
-		if resolvedEnvironment.ImageBuild != nil {
-			return UpResult{}, fmt.Errorf("project Workspace image is missing: %s; run `elyro image build` before `elyro up`", resolvedEnvironment.Image)
+		reportProgress(request, "Pulling "+workspaceImageDisplayName(plan.Environment)+" Workspace image")
+		if pullErr := puller.Pull(ctx, plan.Environment.Image, request.PullOutput); pullErr != nil {
+			return UpResult{}, imagePullError(plan.Environment, pullErr)
 		}
-		if !resolvedEnvironment.CustomImage && resolvedEnvironment.Name == string(resolvedEnvironment.Toolchain) && resolvedEnvironment.Toolchain != "" {
-			return UpResult{}, fmt.Errorf("missing image %s for %s; build or pull it first", resolvedEnvironment.Image, resolvedEnvironment.Platform)
+		if !runtime.ImageExists(ctx, plan.Environment.Image) {
+			return UpResult{}, fmt.Errorf("missing image %s for %s after pull", plan.Environment.Image, plan.Environment.Platform)
 		}
-		return UpResult{}, fmt.Errorf("missing image %s for %s; build or pull it first", resolvedEnvironment.Image, resolvedEnvironment.Platform)
-	}
-	if err := workspace.ValidateManagedSSHHost(request.SSHConfigPath, projectCtx.HostAlias); err != nil {
-		return UpResult{}, err
 	}
 	resolvedIdentityFile, publicKey, err := access.EnsureSSHIdentity(request.IdentityFile)
 	if err != nil {
 		return UpResult{}, err
 	}
-	commandPublishes, err := workspace.ParsePublishSpecs(request.PublishSpecs)
-	if err != nil {
-		return UpResult{}, err
-	}
-	publishes, err := workspace.MergePortPublishes(resolvedEnvironment.Docker.Publishes, commandPublishes)
-	if err != nil {
-		return UpResult{}, fmt.Errorf("merge environment and command port publishes: %w", err)
-	}
-	normalizedPublishes := workspace.NormalizePublishSpecs(publishes)
-	normalizedMounts := workspace.NormalizeDockerMounts(resolvedEnvironment.Docker.Mounts)
-	privilegedLabel := fmt.Sprintf("%t", resolvedEnvironment.Docker.Privileged)
 
 	reportProgress(request, "Starting Workspace")
-	info, action, err := ensureContainer(ctx, runtime, projectCtx, resolvedEnvironment, publishes, normalizedPublishes, normalizedMounts, privilegedLabel, request.SSHPort, request.Recreate)
+	info, action, err := executeContainerPlan(ctx, runtime, plan, request.SSHPort)
 	if err != nil {
 		return UpResult{}, err
 	}
@@ -125,7 +87,7 @@ func up(ctx context.Context, runtime containerRuntime, request UpRequest) (resul
 	if err := runtime.WaitForSSHD(ctx, info.Name); err != nil {
 		return UpResult{}, err
 	}
-	if err := access.InstallContainerSSHAccess(ctx, info.Name, publicKey, resolvedEnvironment.Docker.RuntimeEnvironment.Effective); err != nil {
+	if err := access.InstallContainerSSHAccess(ctx, info.Name, publicKey, plan.Environment.Docker.RuntimeEnvironment.Effective); err != nil {
 		return UpResult{}, err
 	}
 	knownHostsFile := workspace.DefaultKnownHostsFile()
@@ -143,22 +105,23 @@ func up(ctx context.Context, runtime containerRuntime, request UpRequest) (resul
 		return UpResult{}, err
 	}
 
-	if resolvedEnvironment.ProjectConfigured {
-		if err := workspace.EnsureVSCodeWorkspace(projectCtx.ProjectDir, resolvedEnvironment); err != nil {
+	if plan.Environment.ProjectConfigured {
+		if err := workspace.EnsureVSCodeWorkspace(plan.Project.ProjectDir, plan.Environment); err != nil {
 			return UpResult{}, err
 		}
 	}
 
 	return UpResult{
-		Project:         projectCtx,
-		Environment:     resolvedEnvironment,
+		Project:         plan.Project,
+		Environment:     plan.Environment,
 		Container:       *info,
 		SSHConfigPath:   request.SSHConfigPath,
 		IdentityFile:    resolvedIdentityFile,
 		Action:          action,
-		PrivilegedLabel: privilegedLabel,
-		Published:       normalizedPublishes,
-		Mounts:          normalizedMounts,
+		Reasons:         plan.Reasons,
+		PrivilegedLabel: plan.PrivilegedLabel,
+		Published:       plan.Published,
+		Mounts:          plan.Mounts,
 	}, nil
 }
 

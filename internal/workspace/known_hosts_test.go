@@ -116,6 +116,26 @@ func TestPrepareKnownSSHHostMergesCompatiblePartialScans(t *testing.T) {
 	}
 }
 
+func TestPrepareKnownSSHHostRewritesEndpointWhenStoppedContainerPortChanges(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "known_hosts")
+	keys := "[127.0.0.1]:2222 ssh-ed25519 SAME-KEY"
+	scan := func(context.Context, string, string) (string, error) { return keys, nil }
+	if err := prepareKnownSSHHost(t.Context(), path, "elyro-demo", "container-1", "127.0.0.1", "2222", scan); err != nil {
+		t.Fatal(err)
+	}
+	keys = "[127.0.0.1]:3333 ssh-ed25519 SAME-KEY"
+	if err := prepareKnownSSHHost(t.Context(), path, "elyro-demo", "container-1", "127.0.0.1", "3333", scan); err != nil {
+		t.Fatalf("same key on reassigned port failed: %v", err)
+	}
+	content, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(content), ":2222") || !strings.Contains(string(content), ":3333") {
+		t.Fatalf("known-host endpoint was not replaced: %q", content)
+	}
+}
+
 func TestPrepareKnownSSHHostRejectsChangedOrUnrelatedPartialScan(t *testing.T) {
 	t.Parallel()
 
@@ -146,5 +166,15 @@ func TestMergeKnownSSHKeysPreservesIdenticalLegacyContent(t *testing.T) {
 	}
 	if _, ok := mergeKnownSSHKeys(keys, "different-legacy-content"); ok {
 		t.Fatal("mergeKnownSSHKeys accepted different unstructured content")
+	}
+}
+
+func TestRemoveKnownSSHHostDoesNotCreateMissingFile(t *testing.T) {
+	path := filepath.Join(t.TempDir(), ".ssh", "elyro_known_hosts")
+	if err := RemoveKnownSSHHost(path, "elyro-demo"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Fatalf("missing known-hosts file was created: %v", err)
 	}
 }

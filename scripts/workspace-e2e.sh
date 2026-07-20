@@ -236,6 +236,17 @@ run_go_case() {
   project_dir="$(copy_example go-http-service)"
   port="$(find_free_port)"
 
+  log "go example: create plan is side-effect free"
+  "${BIN}" up --project-dir "${project_dir}" --publish "${port}:8000" --dry-run --json | \
+    jq -e --arg root "${project_dir}" '
+      .kind == "workspace_plan" and .operation == "up" and .action == "create" and
+      .reasons == ["workspace_absent"] and .project.root == $root
+    ' >/dev/null
+  test -z "$(container_for_project "${project_dir}")"
+  test ! -s "${SSH_CONFIG}"
+  test ! -e "${HOME}/.ssh/elyro_known_hosts"
+  test ! -e "${XDG_STATE_HOME}/elyro/workspaces.json"
+
   log "go example: workspace up"
   "${BIN}" up \
     --project-dir "${project_dir}" \
@@ -253,6 +264,16 @@ run_go_case() {
   test -n "${container_id}"
   docker exec "${container_id}" bash -lc 'go version >/dev/null && ! command -v golangci-lint'
 
+  log "go example: reuse and start plans"
+  "${BIN}" up --project-dir "${project_dir}" --publish "${port}:8000" --dry-run --json | \
+    jq -e '.action == "reuse" and .reasons == [] and .workspace.current_status == "running"' >/dev/null
+  docker stop "${container_id}" >/dev/null
+  "${BIN}" up --project-dir "${project_dir}" --publish "${port}:8000" --dry-run --json | \
+    jq -e '.action == "start" and .reasons == ["workspace_stopped"] and .workspace.current_status == "exited"' >/dev/null
+  "${BIN}" up --project-dir "${project_dir}" --publish "${port}:8000" --json | \
+    jq -e '.action == "started" and .reasons == ["workspace_stopped"]' >/dev/null
+  test "$(container_for_project "${project_dir}")" = "${container_id}"
+
   nested_dir="${project_dir}/internal/http"
   mkdir -p "${nested_dir}"
   root_id="$("${BIN}" status --project-dir "${project_dir}" --json | jq -r '.workspace.id')"
@@ -263,8 +284,10 @@ run_go_case() {
   (cd "${nested_dir}" && "${BIN}" exec -- /usr/local/go/bin/go version) >/dev/null
 
   log "go example: recreate from nested directory"
+  (cd "${nested_dir}" && "${BIN}" up --recreate --publish "${port}:8000" --dry-run --json) | \
+    jq -e '.action == "recreate" and .reasons == ["explicit_recreate"]' >/dev/null
   (cd "${nested_dir}" && "${BIN}" up --recreate --publish "${port}:8000" --json) | \
-    jq -e '.action == "recreated" and .workspace.status == "running"' >/dev/null
+    jq -e '.action == "recreated" and .reasons == ["explicit_recreate"] and .workspace.status == "running"' >/dev/null
   recreated_container_id="$(container_for_project "${project_dir}")"
   test -n "${recreated_container_id}"
   test "${recreated_container_id}" != "${container_id}"
@@ -290,9 +313,19 @@ run_go_case() {
   fi
   stop_workspace_service
 
-  log "go example: workspace down"
+  log "go example: removal, cleanup, and empty plans"
+  (cd "${nested_dir}" && "${BIN}" down --dry-run --json) | jq -e '
+    .action == "remove" and
+    .removes == ["container_writable_layer", "managed_ssh", "known_hosts", "registry_record"] and
+    .preserves == ["project_files", "mounted_host_data", "local_images"]
+  ' >/dev/null
+  docker rm -f "${recreated_container_id}" >/dev/null
+  (cd "${nested_dir}" && "${BIN}" down --dry-run --json) | \
+    jq -e '.action == "cleanup" and (.removes | index("container_writable_layer") | not)' >/dev/null
   (cd "${nested_dir}" && "${BIN}" down) >/dev/null
   assert_workspace_removed "${project_dir}"
+  (cd "${nested_dir}" && "${BIN}" down --dry-run --json) | \
+    jq -e '.action == "none" and .removes == []' >/dev/null
 }
 
 run_node_case() {
@@ -559,12 +592,17 @@ PY
     printf '%s\n' 'APP_MODE=source-changed-but-overridden' 'FILE_ONLY=file-value'
     printf '%s\n' 'EQUALS_VALUE=first=second' 'HASH_VALUE=value#fragment' 'QUOTED_VALUE="literal-quotes"' "INTERPOLATED_VALUE=\${HOME}"
   } >"${project_dir}/.elyro/dev.env"
-  (cd "${nested_dir}" && "${BIN}" up --json) | jq -e '.action == "reused"' >/dev/null
+  (cd "${nested_dir}" && "${BIN}" up --dry-run --json) | \
+    jq -e '.action == "reuse" and .reasons == []' >/dev/null
+  (cd "${nested_dir}" && "${BIN}" up --json) | jq -e '.action == "reused" and .reasons == []' >/dev/null
   test "$(container_for_project "${project_dir}")" = "${first_container}"
 
   log "runtime environment: effective value change recreates Workspace"
   printf 'APP_MODE=local-wins\nLOCAL_ONLY=changed-value\n' >"${project_dir}/.elyro/user.local.env"
-  (cd "${nested_dir}" && "${BIN}" up --json) | jq -e '.action == "recreated"' >/dev/null
+  (cd "${nested_dir}" && "${BIN}" up --dry-run --json) | \
+    jq -e '.action == "recreate" and .reasons == ["runtime_environment_changed"]' >/dev/null
+  (cd "${nested_dir}" && "${BIN}" up --json) | \
+    jq -e '.action == "recreated" and .reasons == ["runtime_environment_changed"]' >/dev/null
   second_container="$(container_for_project "${project_dir}")"
   test -n "${second_container}"
   test "${second_container}" != "${first_container}"

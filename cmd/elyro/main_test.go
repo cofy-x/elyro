@@ -33,6 +33,23 @@ func TestRootHelpUsesStableGroupedLayout(t *testing.T) {
 	}
 }
 
+func TestLifecycleHelpDiscoversDryRun(t *testing.T) {
+	t.Parallel()
+	for _, command := range []string{"up", "down"} {
+		cmd := newRootCmd()
+		var out bytes.Buffer
+		cmd.SetOut(&out)
+		cmd.SetErr(&out)
+		cmd.SetArgs([]string{command, "--help"})
+		if err := cmd.Execute(); err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(out.String(), "--dry-run") {
+			t.Fatalf("%s help does not discover --dry-run:\n%s", command, out.String())
+		}
+	}
+}
+
 func TestProcessExitCodePreservesChildExitStatus(t *testing.T) {
 	err := exec.Command("sh", "-c", "exit 7").Run()
 	if got := processExitCode(fmt.Errorf("remote command failed: %w", err)); got != 7 {

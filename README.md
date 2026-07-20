@@ -9,6 +9,7 @@ Edit on Mac. Build and test in Linux.
 Elyro gives people and coding agents a predictable local Linux Workspace. Your project stays on the Mac; build, test, and debug commands run in a maintained Linux container; VS Code or Cursor can take over through Remote SSH.
 
 ```bash
+elyro up --dry-run
 elyro up --open
 elyro shell
 elyro exec -- go test ./...
@@ -35,6 +36,7 @@ Elyro does not install, authenticate, run, or proxy a coding agent. The bundled 
 - Direct, argv-safe Linux execution through `elyro exec`; shell syntax is explicit with `bash -lc`.
 - Editor handoff over managed Remote SSH with strict, isolated host-key trust.
 - Small machine contracts for automation: schema 1 for Workspace lifecycle and inspection, plus scoped schema-2 diagnostics.
+- Side-effect-free lifecycle plans explain whether `up` will create, start, reuse, or recreate a Workspace and what `down` will remove or preserve.
 - Calm terminal receipts with useful next steps for people, while pipes, CI, and JSON remain stable for agents.
 
 ## Start
@@ -69,6 +71,15 @@ elyro up --recreate
 ```
 
 Ordinary `elyro up` never builds a Dockerfile or runs project lifecycle hooks.
+
+Preview lifecycle changes before applying them:
+
+```bash
+elyro up --dry-run
+elyro down --dry-run
+```
+
+Recreating or removing a Workspace discards its container writable layer. Project files, mounted host data, and local images remain on the host; persistent OS tools belong in the project image.
 
 Declare non-sensitive runtime values explicitly when every shell, command, and editor terminal should share them:
 
