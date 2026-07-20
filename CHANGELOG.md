@@ -2,6 +2,20 @@
 
 All notable changes to Elyro are documented here. The project follows Semantic Versioning, and pre-1.0 releases may contain intentional breaking changes.
 
+## [0.1.4] - 2026-07-20
+
+### Added
+
+- Added strict `docker.environment` and ordered project-relative `docker.env_files` inputs for reproducible container-wide runtime configuration.
+- Added schema-2 Doctor metadata and a stable `runtime_environment` check that expose variable names and relative file paths while redacting values and fingerprints.
+- Added a public runtime-environment example and installed-binary E2E coverage for precedence, redaction, automatic recreation, SSH/editor inheritance, and cleanup.
+
+### Changed
+
+- Workspace specification matching now fingerprints final effective runtime values, so effective changes automatically recreate an existing Workspace while equivalent overrides remain reusable.
+- Managed SSH and editor terminals inherit the same explicit runtime values as `exec` and `shell`; values are streamed to container setup without entering host argv, logs, labels, registry data, or public JSON.
+- Automatic specification replacement now reports the existing typed `recreated` action instead of `created`.
+
 ## [0.1.3] - 2026-07-20
 
 ### Added

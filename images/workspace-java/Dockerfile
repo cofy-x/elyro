@@ -1,4 +1,4 @@
-ARG WORKSPACE_BASE_IMAGE=ghcr.io/cofy-x/elyro/workspace-base:v0.1.3
+ARG WORKSPACE_BASE_IMAGE=ghcr.io/cofy-x/elyro/workspace-base:v0.1.4
 FROM ${WORKSPACE_BASE_IMAGE}
 
 ARG DEBIAN_FRONTEND=noninteractive

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-version="${1:-v0.1.3}"
+version="${1:-v0.1.4}"
 dist_dir="${2:-}"
 fixture_mode=0
 temp_dir="$(mktemp -d "${TMPDIR:-/tmp}/elyro-install-smoke.XXXXXX")"
