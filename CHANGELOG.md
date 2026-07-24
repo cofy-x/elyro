@@ -2,6 +2,17 @@
 
 All notable changes to Elyro are documented here. The project follows Semantic Versioning, and pre-1.0 releases may contain intentional breaking changes.
 
+## [0.1.6] - 2026-07-24
+
+### Changed
+
+- The embedded coding-agent Skill now activates only for a project with an `elyro.yaml` configuration, points agents to command-specific help for exact syntax, and keeps project initialization outside the automatic Workspace workflow.
+- The root CLI help and coding-agent guide now make the embedded Skill easier to discover and clarify the configured-project workflow.
+
+### Removed
+
+- Removed Java Toolchain detection, initialization, smoke coverage, and the maintained `workspace-java` release image. Elyro's maintained Toolchains are now Python, Go, and Node.js, alongside the shared base image.
+
 ## [0.1.5] - 2026-07-20
 
 Elyro v0.1.5 is the first non-prerelease version and establishes the compatibility baseline for subsequent pre-1.0 updates.
@@ -84,9 +95,9 @@ The first Elyro release establishes a Mac-first, local-first Linux Workspace for
 ### Added
 
 - Added the `elyro` CLI for Workspace initialization, lifecycle, status, command execution, shell access, editor handoff, diagnostics, version reporting, and embedded Skill installation.
-- Added zero-configuration Toolchain detection for Go, Python, and Node.js projects, plus explicit `elyro.yaml` environments and custom-image support.
+- Added zero-configuration Toolchain detection for Go, Python, Node.js, and Java projects, plus explicit `elyro.yaml` environments and custom-image support.
 - Added schema-stable JSON output for automation and a host-agent Skill for Codex and Claude Code.
-- Added four maintained dual-architecture Workspace images: base, Python, Go, and Node.js.
+- Added five maintained dual-architecture Workspace images: base, Python, Go, Node.js, and Java.
 - Added exact-version macOS and Linux release archives, checksums, provenance attestations, Homebrew publishing, and installation smoke tests.
 - Added immutable dual-architecture candidate images with architecture, OCI metadata, and compressed-size budget validation before release.
 

@@ -29,4 +29,4 @@ A manually dispatched release Nightly publishes unique candidate tags in the for
 
 Scheduled Nightly runs build and test both architectures without publishing candidates. The tag-triggered Release workflow repeats the manifest, label, comparison, and budget checks against the final versioned images.
 
-Ordinary tags such as `v0.1.5` publish a non-prerelease GitHub Release and become latest. A future suffix such as `v0.2.0-rc.1` is marked prerelease automatically and does not replace the latest production release.
+Ordinary tags such as `v0.1.6` publish a non-prerelease GitHub Release and become latest. A future suffix such as `v0.2.0-rc.1` is marked prerelease automatically and does not replace the latest production release.

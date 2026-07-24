@@ -16,7 +16,7 @@ elyro version --json
 Download the repository installer and choose an exact release:
 
 ```bash
-./scripts/install.sh --version v0.1.5
+./scripts/install.sh --version v0.1.6
 ```
 
 The archive contains one binary, `elyro`. The installer verifies `checksums.txt` before replacing it.
