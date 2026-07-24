@@ -1,9 +1,8 @@
 .PHONY: image-report image-report-test \
-	workspace-base-image-build workspace-python-image-build workspace-go-image-build workspace-java-image-build workspace-node-image-build \
+	workspace-base-image-build workspace-python-image-build workspace-go-image-build workspace-node-image-build \
 	workspace-base-image-build-amd64 workspace-base-image-build-arm64 \
 	workspace-python-image-build-amd64 workspace-python-image-build-arm64 \
 	workspace-go-image-build-amd64 workspace-go-image-build-arm64 \
-	workspace-java-image-build-amd64 workspace-java-image-build-arm64 \
 	workspace-node-image-build-amd64 workspace-node-image-build-arm64
 
 ELYRO_PROXY_URL ?=
@@ -31,8 +30,6 @@ WORKSPACE_PYTHON_IMAGE_REPO ?= elyro/workspace-python
 WORKSPACE_PYTHON_PLATFORM ?= linux/amd64
 WORKSPACE_GO_IMAGE_REPO ?= elyro/workspace-go
 WORKSPACE_GO_PLATFORM ?= linux/amd64
-WORKSPACE_JAVA_IMAGE_REPO ?= elyro/workspace-java
-WORKSPACE_JAVA_PLATFORM ?= linux/amd64
 WORKSPACE_NODE_IMAGE_REPO ?= elyro/workspace-node
 WORKSPACE_NODE_PLATFORM ?= linux/amd64
 
@@ -74,15 +71,6 @@ workspace-go-image-build-amd64:
 
 workspace-go-image-build-arm64:
 	@$(MAKE) workspace-go-image-build WORKSPACE_GO_PLATFORM=linux/arm64 WORKSPACE_BASE_PLATFORM=linux/arm64
-
-workspace-java-image-build: workspace-base-image-build
-	$(call build_workspace_image,WORKSPACE_JAVA,--build-arg "WORKSPACE_BASE_IMAGE=$(WORKSPACE_BASE_IMAGE_REPO):$${VERSION_INPUT}-$${ARCH_SUFFIX}",workspace-java)
-
-workspace-java-image-build-amd64:
-	@$(MAKE) workspace-java-image-build WORKSPACE_JAVA_PLATFORM=linux/amd64 WORKSPACE_BASE_PLATFORM=linux/amd64
-
-workspace-java-image-build-arm64:
-	@$(MAKE) workspace-java-image-build WORKSPACE_JAVA_PLATFORM=linux/arm64 WORKSPACE_BASE_PLATFORM=linux/arm64
 
 workspace-node-image-build: workspace-base-image-build
 	$(call build_workspace_image,WORKSPACE_NODE,--build-arg "WORKSPACE_BASE_IMAGE=$(WORKSPACE_BASE_IMAGE_REPO):$${VERSION_INPUT}-$${ARCH_SUFFIX}",workspace-node)

@@ -17,7 +17,7 @@ esac
   exit 2
 }
 
-for image in workspace-base workspace-python workspace-go workspace-node workspace-java; do
+for image in workspace-base workspace-python workspace-go workspace-node; do
   source_ref="${prefix}/${image}:${source_version}-${arch}"
   candidate_ref="${prefix}/${image}:${candidate_tag}-${arch}"
   docker image inspect "${source_ref}" >/dev/null

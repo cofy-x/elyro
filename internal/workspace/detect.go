@@ -13,7 +13,6 @@ var toolchainMarkers = []struct {
 }{
 	{ToolchainPython, []string{"pyproject.toml", "requirements.txt", "Pipfile", "uv.lock", "setup.py"}},
 	{ToolchainGo, []string{"go.mod", "go.work"}},
-	{ToolchainJava, []string{"pom.xml", "build.gradle", "build.gradle.kts", "settings.gradle", "settings.gradle.kts", "gradlew"}},
 	{ToolchainNode, []string{"package.json", "package-lock.json", "npm-shrinkwrap.json", "pnpm-lock.yaml", "yarn.lock"}},
 }
 
@@ -26,13 +25,13 @@ type ToolchainDetectionError struct {
 
 func (e *ToolchainDetectionError) Error() string {
 	if len(e.Matches) == 0 {
-		return fmt.Sprintf("cannot detect a workspace toolchain for %s; pass --toolchain python, go, java, or node", e.ProjectDir)
+		return fmt.Sprintf("cannot detect a workspace toolchain for %s; pass --toolchain python, go, or node", e.ProjectDir)
 	}
 	names := make([]string, 0, len(e.Matches))
 	for _, toolchain := range e.Matches {
 		names = append(names, string(toolchain))
 	}
-	return fmt.Sprintf("multiple workspace toolchains detected for %s (%s); pass --toolchain python, go, java, or node", e.ProjectDir, strings.Join(names, ", "))
+	return fmt.Sprintf("multiple workspace toolchains detected for %s (%s); pass --toolchain python, go, or node", e.ProjectDir, strings.Join(names, ", "))
 }
 
 func DetectToolchains(projectDir string) ([]Toolchain, error) {

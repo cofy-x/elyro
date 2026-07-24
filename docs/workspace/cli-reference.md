@@ -23,7 +23,7 @@ See the [Workspace configuration reference](configuration.md) for the complete `
 ## Lifecycle
 
 ```bash
-elyro up [--toolchain python|go|node|java | --environment NAME] [--platform linux/amd64|linux/arm64]
+elyro up [--toolchain python|go|node | --environment NAME] [--platform linux/amd64|linux/arm64]
 elyro up --open [--editor cursor|code]
 elyro up --recreate
 elyro up --dry-run [--recreate] [--json]
@@ -93,4 +93,4 @@ elyro skill install codex|claude-code|all [--force]
 elyro skill uninstall codex|claude-code|all [--force]
 ```
 
-Install is idempotent for identical content. Different or modified content is protected unless `--force` is explicit.
+Top-level help lists `skill` under `Agent`; `elyro skill --help` shows the inspection and installation paths with copyable examples. `elyro skill show` prints the complete version-matched Skill. Install is idempotent for identical content. Different or modified content is protected unless `--force` is explicit.

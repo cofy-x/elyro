@@ -12,7 +12,7 @@ HOST_HOME="${HOME}"
 export HOME="${TMP_ROOT}/home"
 export DOCKER_CONFIG="${DOCKER_CONFIG:-${HOST_HOME}/.docker}"
 SSH_CONFIG="${HOME}/.ssh/config"
-CASES="${ELYRO_WORKSPACE_E2E_CASES:-python go node java environment image runtime-environment}"
+CASES="${ELYRO_WORKSPACE_E2E_CASES:-python go node environment image runtime-environment}"
 CUSTOM_IMAGE="elyro/workspace-e2e-custom:${RUN_ID}"
 PROJECT_IMAGE="elyro/workspace-e2e-project:${RUN_ID}"
 WORKSPACE_EXEC_PID=""
@@ -166,8 +166,7 @@ cleanup() {
     "${TMP_ROOT}/go-custom-image-environment" \
     "${TMP_ROOT}/go-project-image" \
     "${TMP_ROOT}/go-runtime-environment" \
-    "${TMP_ROOT}/node-test" \
-    "${TMP_ROOT}/java-test"; do
+    "${TMP_ROOT}/node-test"; do
     if [ -d "${project_dir}" ]; then
       while IFS= read -r container_id; do
         if [ -n "${container_id}" ]; then
@@ -365,34 +364,6 @@ EOF
   run_ssh "${host_alias}" 'node --version >/dev/null && npm --version >/dev/null'
 
   log "node project: workspace down"
-  workspace_down "${project_dir}"
-}
-
-run_java_case() {
-  local project_dir host_alias
-
-  project_dir="${TMP_ROOT}/java-test"
-  mkdir -p "${project_dir}"
-  cat >"${project_dir}/Ready.java" <<'EOF'
-public final class Ready {
-  public static void main(String[] args) {
-    if (!System.getProperty("os.name").toLowerCase().contains("linux")) {
-      throw new IllegalStateException("expected Linux");
-    }
-    System.out.println("java workspace is ready");
-  }
-}
-EOF
-  prepare_project_dir "${project_dir}"
-
-  log "java project: workspace up and exec"
-  "${BIN}" up --toolchain java --project-dir "${project_dir}"
-  host_alias="$(latest_host_alias)"
-  assert_status_field "${project_dir}" toolchain java
-  "${BIN}" exec --project-dir "${project_dir}" -- bash -lc 'javac Ready.java && java Ready'
-  run_ssh "${host_alias}" 'java -version >/dev/null && mvn --version >/dev/null && gradle --version >/dev/null'
-
-  log "java project: workspace down"
   workspace_down "${project_dir}"
 }
 
@@ -680,7 +651,6 @@ main() {
       python) run_python_case ;;
       go) run_go_case ;;
       node) run_node_case ;;
-      java) run_java_case ;;
       environment) run_environment_case ;;
       image) run_project_image_case ;;
       runtime-environment) run_runtime_environment_case ;;

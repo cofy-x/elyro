@@ -23,8 +23,11 @@ Elyro is also designed as a stable execution tool for a host coding agent:
 
 ```bash
 elyro skill install codex
+
+# In a project that contains elyro.yaml:
 elyro status --json
-elyro up --json --toolchain go
+elyro up --dry-run --json
+elyro up --json
 elyro exec -- go test ./...
 ```
 
@@ -34,7 +37,7 @@ Elyro does not install, authenticate, run, or proxy a coding agent. The bundled 
 
 - Mac-first and local-first: source files and editing stay on the host.
 - Zero-config startup when one Toolchain can be detected; only explicit `init` commands write project configuration.
-- Maintained Workspace images for Python, Go, Node.js, and Java, with explicit project images for persistent OS tools and reproducible runtime environment inputs.
+- Maintained Workspace images for Python, Go, and Node.js, with explicit project images for persistent OS tools and reproducible runtime environment inputs.
 - Direct, argv-safe Linux execution through `elyro exec`; shell syntax is explicit with `bash -lc`.
 - Editor handoff over managed Remote SSH with strict, isolated host-key trust.
 - Small machine contracts for automation: schema 1 for Workspace lifecycle and inspection, plus scoped schema-2 diagnostics.
@@ -51,7 +54,7 @@ brew install cofy-x/tap/elyro
 
 v0.1.5 is Elyro's first non-prerelease version. The CLI, `elyro.yaml` version 1, JSON schemas, exit codes, and lifecycle meanings form the compatibility baseline for later pre-1.0 releases.
 
-Then enter a Go, Python, Node.js, or Java project and run:
+Then enter a Go, Python, or Node.js project and run:
 
 ```bash
 elyro up --open
@@ -106,6 +109,8 @@ elyro skill install codex
 elyro skill install claude-code
 # or: elyro skill install all
 ```
+
+The `Agent` section of `elyro --help` exposes the Skill workflow, and `elyro skill show` prints the complete instructions embedded in the current Elyro version.
 
 See [Using Elyro with Coding Agents](docs/coding-agents.md) for the operating contract and an `AGENTS.md` snippet.
 

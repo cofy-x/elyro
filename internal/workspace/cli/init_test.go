@@ -87,7 +87,7 @@ func TestInitProjectInteractiveSelectionAndConfirmation(t *testing.T) {
 	for _, text := range []string{
 		"! No project language was detected\n",
 		"? Choose a Toolchain\n",
-		"  1  Python\n  2  Go\n  3  Java\n  4  Node.js\n",
+		"  1  Python\n  2  Go\n  3  Node.js\n",
 		"› Select: ",
 		"› Create elyro.yaml with Toolchain Go? [y/N] ",
 		"✓ Created elyro.yaml\n",

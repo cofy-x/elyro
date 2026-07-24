@@ -131,8 +131,6 @@ func workspaceImageDisplayName(environment workspace.ResolvedEnvironment) string
 		return "Python"
 	case workspace.ToolchainGo:
 		return "Go"
-	case workspace.ToolchainJava:
-		return "Java"
 	case workspace.ToolchainNode:
 		return "Node.js"
 	default:

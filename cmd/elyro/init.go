@@ -33,7 +33,7 @@ func newInitCmd() *cobra.Command {
 			)
 		},
 	}
-	cmd.Flags().StringVar(&toolchain, "toolchain", "", "Workspace toolchain (python, go, java, or node); detected when omitted")
+	cmd.Flags().StringVar(&toolchain, "toolchain", "", "Workspace toolchain (python, go, or node); detected when omitted")
 	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "Create elyro.yaml without prompting")
 	cmd.Flags().StringVar(&projectDir, "project-dir", ".", "Project directory to configure")
 	return cmd

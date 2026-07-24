@@ -41,7 +41,7 @@ func newImageInitCmd() *cobra.Command {
 	}
 	cmd.Flags().StringVar(&projectDir, "project-dir", ".", "Project directory to configure")
 	cmd.Flags().StringVar(&environmentName, "environment", "", "Project Environment to configure")
-	cmd.Flags().StringVar(&toolchainName, "toolchain", "", "Official Toolchain base image (python, go, java, or node)")
+	cmd.Flags().StringVar(&toolchainName, "toolchain", "", "Official Toolchain base image (python, go, or node)")
 	cmd.Flags().StringVar(&imageName, "image", "", "Tagged project image reference")
 	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "Create the image configuration without confirmation")
 	return cmd

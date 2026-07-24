@@ -20,7 +20,7 @@ func TestRootHelpUsesStableGroupedLayout(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := out.String()
-	for _, text := range []string{"Elyro: Edit on Mac. Build and test in Linux.\n", "Workspace\n", "Project\n", "Agent\n", "Diagnostics\n", "elyro up --open", "elyro exec -- <command>"} {
+	for _, text := range []string{"Elyro: Edit on Mac. Build and test in Linux.\n", "Workspace\n", "Project\n", "Agent\n", "Diagnostics\n", "elyro up --open", "elyro exec -- <command>", "Inspect or install the Elyro Skill for coding agents"} {
 		if !strings.Contains(got, text) {
 			t.Fatalf("help output does not contain %q:\n%s", text, got)
 		}

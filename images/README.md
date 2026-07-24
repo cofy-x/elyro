@@ -1,12 +1,11 @@
 # Elyro Workspace Images
 
-Elyro publishes five images for `linux/amd64` and `linux/arm64`:
+Elyro publishes four images for `linux/amd64` and `linux/arm64`:
 
 - `workspace-base`: Ubuntu, UID/GID 1000 user `elyro`, SSH, sudo, shell, Git, curl, jq, and process tools.
 - `workspace-python`: Python, `venv`, build dependencies, and checksummed standalone `uv`.
 - `workspace-go`: checksummed Go Toolchain and CGO build dependencies.
 - `workspace-node`: checksummed Node.js LTS, npm, Corepack, and native-addon build dependencies.
-- `workspace-java`: JDK, Maven, and Gradle.
 
 The base image is built directly from a digest-pinned Ubuntu 24.04 image. It contains no language Toolchain and no coding-agent CLI.
 
@@ -19,7 +18,6 @@ make workspace-base-image-build
 make workspace-python-image-build
 make workspace-go-image-build
 make workspace-node-image-build
-make workspace-java-image-build
 ```
 
 Append `-arm64` to a target for a local arm64 build. Source builds use architecture-specific tags such as `elyro/workspace-go:dev-arm64`; public releases publish exact multi-architecture tags such as `ghcr.io/cofy-x/elyro/workspace-go:v0.1.5`.

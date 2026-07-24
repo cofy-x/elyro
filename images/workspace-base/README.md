@@ -4,7 +4,7 @@
 
 The interactive zsh environment uses a native `elyro:<project> <cwd> ❯` prompt, colored directory listings, autosuggestions, and syntax highlighting. It has no shell framework or prompt runtime dependency. `NO_COLOR` and `TERM=dumb` select the equivalent plain prompt. Build-time apt remains non-interactive, while the published image does not export `DEBIAN_FRONTEND`, so apt commands run by a developer retain their normal interactive behavior.
 
-It intentionally contains no Python, Go, Java, Node.js, or coding-agent CLI.
+It intentionally contains no Python, Go, Node.js, or coding-agent CLI.
 
 ```bash
 make workspace-base-image-build

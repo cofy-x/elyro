@@ -32,7 +32,7 @@ Unknown fields and unsupported configuration versions are errors. `elyro doctor 
 ## Selection and precedence
 
 - `elyro up --environment NAME` selects a named Environment and requires `elyro.yaml`.
-- `elyro up --toolchain python|go|node|java` selects a built-in Toolchain directly and bypasses the configured default Environment.
+- `elyro up --toolchain python|go|node` selects a built-in Toolchain directly and bypasses the configured default Environment.
 - `--environment` and `--toolchain` are mutually exclusive.
 - Without either flag, Elyro uses `default_environment` when it is set; otherwise it detects exactly one Toolchain from project markers.
 - `--platform` overrides the configured platform.

@@ -28,7 +28,6 @@ help:
 	@echo "  make workspace-python-image-build"
 	@echo "  make workspace-go-image-build"
 	@echo "  make workspace-node-image-build"
-	@echo "  make workspace-java-image-build"
 	@echo ""
 	@echo "All targets (alphabetical):"
 	@$(MAKE) list-targets

@@ -6,7 +6,6 @@ on:
       - 'images/workspace-base/**'
       - 'images/workspace-python/**'
       - 'images/workspace-go/**'
-      - 'images/workspace-java/**'
       - 'images/workspace-node/**'
       - 'release/**'
       - 'scripts/ci/build-core-images.sh'

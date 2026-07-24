@@ -16,7 +16,6 @@ func TestDetectToolchains(t *testing.T) {
 	}{
 		{name: "python", markers: []string{"pyproject.toml", "uv.lock"}, want: []Toolchain{ToolchainPython}},
 		{name: "go", markers: []string{"go.mod"}, want: []Toolchain{ToolchainGo}},
-		{name: "java", markers: []string{"build.gradle.kts"}, want: []Toolchain{ToolchainJava}},
 		{name: "node", markers: []string{"package.json", "pnpm-lock.yaml"}, want: []Toolchain{ToolchainNode}},
 		{name: "multiple", markers: []string{"requirements.txt", "go.work"}, want: []Toolchain{ToolchainPython, ToolchainGo}},
 		{name: "none", want: []Toolchain{}},

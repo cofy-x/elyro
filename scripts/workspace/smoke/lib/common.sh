@@ -20,7 +20,7 @@ workspace_smoke_build_images() {
   (
     cd "${root_dir}" || exit 1
     make "workspace-python-image-build-${arch}" "workspace-go-image-build-${arch}" \
-      "workspace-node-image-build-${arch}" "workspace-java-image-build-${arch}"
+      "workspace-node-image-build-${arch}"
   )
   export ELYRO_IMAGE_PREFIX=elyro
 }

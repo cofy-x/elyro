@@ -22,7 +22,13 @@ type skillTarget struct {
 }
 
 func NewSkillCmd() *cobra.Command {
-	cmd := &cobra.Command{Use: "skill", Short: "Show or install the Elyro skill", Args: cobra.NoArgs}
+	cmd := &cobra.Command{
+		Use:   "skill",
+		Short: "Inspect or install the Elyro Skill for coding agents",
+		Args:  cobra.NoArgs,
+		Example: `  elyro skill show
+  elyro skill install codex`,
+	}
 	cmd.AddCommand(newSkillShowCmd(), newSkillInstallCmd(), newSkillUninstallCmd())
 	return cmd
 }
@@ -30,7 +36,7 @@ func NewSkillCmd() *cobra.Command {
 func newSkillShowCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "show",
-		Short: "Print the embedded Elyro skill",
+		Short: "Print the complete embedded Elyro Skill",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			_, err := cmd.OutOrStdout().Write(skills.SkillMarkdown)
@@ -43,7 +49,7 @@ func newSkillInstallCmd() *cobra.Command {
 	var force bool
 	cmd := &cobra.Command{
 		Use:   "install <codex|claude-code|all>",
-		Short: "Install the embedded Elyro skill for a host coding agent",
+		Short: "Install the embedded Elyro Skill for a host coding agent",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ui := cliui.New(cmd.OutOrStdout())
@@ -82,7 +88,7 @@ func newSkillUninstallCmd() *cobra.Command {
 	var force bool
 	cmd := &cobra.Command{
 		Use:   "uninstall <codex|claude-code|all>",
-		Short: "Uninstall the embedded Elyro skill",
+		Short: "Uninstall the embedded Elyro Skill",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ui := cliui.New(cmd.OutOrStdout())

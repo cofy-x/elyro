@@ -9,7 +9,7 @@ candidate_tag="${ELYRO_CANDIDATE_TAG:?ELYRO_CANDIDATE_TAG is required}"
   exit 2
 }
 
-for image in workspace-base workspace-python workspace-go workspace-node workspace-java; do
+for image in workspace-base workspace-python workspace-go workspace-node; do
   target="${prefix}/${image}:${candidate_tag}"
   if docker buildx imagetools inspect "${target}" >/dev/null 2>&1; then
     printf 'candidate index already exists and will not be overwritten: %s\n' "${target}" >&2

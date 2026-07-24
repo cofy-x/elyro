@@ -99,7 +99,7 @@ func promptToolchainSelection(in io.Reader, out io.Writer, detected []workspace.
 	if err := ui.Question("Choose a Toolchain"); err != nil {
 		return "", err
 	}
-	choices := []workspace.Toolchain{workspace.ToolchainPython, workspace.ToolchainGo, workspace.ToolchainJava, workspace.ToolchainNode}
+	choices := []workspace.Toolchain{workspace.ToolchainPython, workspace.ToolchainGo, workspace.ToolchainNode}
 	for i, toolchain := range choices {
 		fmt.Fprintf(out, "  %d  %s\n", i+1, displayToolchainChoice(toolchain))
 	}
@@ -115,12 +115,10 @@ func promptToolchainSelection(in io.Reader, out io.Writer, detected []workspace.
 		return workspace.ToolchainPython, nil
 	case "2", "go":
 		return workspace.ToolchainGo, nil
-	case "3", "java":
-		return workspace.ToolchainJava, nil
-	case "4", "node":
+	case "3", "node":
 		return workspace.ToolchainNode, nil
 	default:
-		return "", errors.New("invalid toolchain selection; pass --toolchain python, go, java, or node")
+		return "", errors.New("invalid toolchain selection; pass --toolchain python, go, or node")
 	}
 }
 
@@ -146,8 +144,6 @@ func displayToolchainChoice(toolchain workspace.Toolchain) string {
 		return "Python"
 	case workspace.ToolchainGo:
 		return "Go"
-	case workspace.ToolchainJava:
-		return "Java"
 	case workspace.ToolchainNode:
 		return "Node.js"
 	default:

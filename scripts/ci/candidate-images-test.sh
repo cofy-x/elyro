@@ -31,11 +31,11 @@ common_env=(
 
 env "${common_env[@]}" ELYRO_BUILD_PLATFORM=linux/arm64 ELYRO_BUILD_VERSION=dev \
   "${ROOT_DIR}/scripts/ci/push-candidate-images.sh"
-[[ "$(grep -c '^push ' "${log_file}")" -eq 5 ]]
+[[ "$(grep -c '^push ' "${log_file}")" -eq 4 ]]
 
 : >"${log_file}"
 env "${common_env[@]}" "${ROOT_DIR}/scripts/ci/merge-candidate-images.sh"
-[[ "$(grep -c '^buildx imagetools create ' "${log_file}")" -eq 5 ]]
+[[ "$(grep -c '^buildx imagetools create ' "${log_file}")" -eq 4 ]]
 
 if env "${common_env[@]}" MOCK_CANDIDATE_EXISTS=1 ELYRO_BUILD_PLATFORM=linux/amd64 ELYRO_BUILD_VERSION=dev \
   "${ROOT_DIR}/scripts/ci/push-candidate-images.sh" >/dev/null 2>&1; then

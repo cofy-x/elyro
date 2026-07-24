@@ -8,7 +8,7 @@ Elyro is a Mac-first, local-first Linux Workspace for individual developers and 
 | :--- | :--- |
 | Workspace | Local Linux development environment for one host project |
 | Environment | Named project configuration in `elyro.yaml` |
-| Toolchain | Maintained Python, Go, Node.js, or Java Workspace image |
+| Toolchain | Maintained Python, Go, or Node.js Workspace image |
 | Project image | Project-owned Dockerfile derived from a Toolchain image and built explicitly through Elyro |
 | Runtime environment | Explicit non-secret container variables resolved from project configuration and project-relative files |
 | Skill | Guidance that teaches a host coding agent to use the Elyro CLI |
@@ -21,7 +21,7 @@ Elyro is a Mac-first, local-first Linux Workspace for individual developers and 
 - Keep the human CLI recognizable and calm with semantic terminal hierarchy, without adding a full-screen UI or changing stream behavior.
 - Preserve direct argv execution, exit codes, stdin, signals, project workdir, and predictable hostname.
 - Keep SSH limited to editor handoff and direct user access, with strict isolated host-key trust.
-- Maintain five amd64/arm64 images: `workspace-base`, `workspace-python`, `workspace-go`, `workspace-node`, and `workspace-java`.
+- Maintain four amd64/arm64 images: `workspace-base`, `workspace-python`, `workspace-go`, and `workspace-node`.
 - Keep official Toolchain images limited to the language runtime, primary build or dependency-management tools, and native compilation prerequisites; project-level linters and formatters stay project-owned.
 - Keep persistent project OS tools in an explicit project-owned Dockerfile; never turn ordinary Workspace startup into an implicit package installation or lifecycle-hook runner.
 - Keep runtime configuration explicit and reproducible; never inherit arbitrary host variables, load `.env` implicitly, or present Docker-visible values as secrets.

@@ -139,7 +139,7 @@ func newUpCmd(opts *GlobalOptions) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVar(&toolchain, "toolchain", "", "Toolchain to start (python, go, java, or node); detected when omitted")
+	cmd.Flags().StringVar(&toolchain, "toolchain", "", "Toolchain to start (python, go, or node); detected when omitted")
 	cmd.Flags().StringVar(&environmentName, "environment", "", "Project-defined environment from elyro.yaml to start")
 	cmd.Flags().StringVar(&platform, "platform", workspace.DefaultPlatform, "Target container platform (linux/amd64 or linux/arm64)")
 	cmd.Flags().BoolVar(&allowUnsafeEnvironment, "allow-unsafe-environment", false, "Allow privileged mode, Docker socket, or host mounts outside the project")

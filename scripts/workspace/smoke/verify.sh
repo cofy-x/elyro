@@ -20,8 +20,6 @@ source "${SCRIPT_DIR}/toolchains/python.sh"
 source "${SCRIPT_DIR}/toolchains/go.sh"
 # shellcheck source=toolchains/node.sh
 source "${SCRIPT_DIR}/toolchains/node.sh"
-# shellcheck source=toolchains/java.sh
-source "${SCRIPT_DIR}/toolchains/java.sh"
 # shellcheck source=environments/custom_image.sh
 source "${SCRIPT_DIR}/environments/custom_image.sh"
 
@@ -31,7 +29,6 @@ workspace_smoke_build_images "${ROOT_DIR}"
 workspace_smoke_toolchain_python "${BIN}" "${ROOT_DIR}"
 workspace_smoke_toolchain_go "${BIN}" "${ROOT_DIR}"
 workspace_smoke_toolchain_node "${BIN}" "${ROOT_DIR}"
-workspace_smoke_toolchain_java "${BIN}" "${ROOT_DIR}"
 workspace_smoke_environment_custom_image "${BIN}" "${ROOT_DIR}"
 
 echo "Elyro Workspace smoke checks passed."

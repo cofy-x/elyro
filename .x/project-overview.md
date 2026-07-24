@@ -9,7 +9,7 @@ Elyro has one product domain: a local Linux Workspace for a host project. Human 
 | `internal/workspace` | Configuration, Toolchain detection, registry, lifecycle, Docker execution, SSH/editor handoff, JSON behavior, and Skill command behavior |
 | `internal/images` | Development and release image reference resolution |
 | `skills/use-elyro-workspace` | Canonical host coding-agent Skill and Codex UI metadata |
-| `images/workspace-*` | Five supported Workspace images |
+| `images/workspace-*` | Four supported Workspace images |
 | `mk/`, `scripts/`, `.github/workflows/`, `release/` | Build, validation, packaging, and release orchestration |
 | `docs/` | User-facing product and maintenance documentation |
 | `.x/` | Agent-facing repository routing and validation context |
@@ -27,6 +27,6 @@ Elyro has one product domain: a local Linux Workspace for a host project. Human 
 ## Structural sync points
 
 - Command changes update the CLI contract test, README, CLI reference, and Skill when its workflow changes.
-- Image changes update the five-image release matrix, image report, smoke scripts, release inputs, and image docs.
+- Image changes update the four-image release matrix, image report, smoke scripts, release inputs, and image docs.
 - Packaging changes update GoReleaser, installer, Homebrew generation/smoke, release workflow, and releasing docs.
 - Path moves update this map, `.x/README.md`, Make/script consumers, and documentation links in the same change.

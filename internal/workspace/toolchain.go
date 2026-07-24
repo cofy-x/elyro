@@ -11,7 +11,6 @@ type Toolchain string
 const (
 	ToolchainPython Toolchain = "python"
 	ToolchainGo     Toolchain = "go"
-	ToolchainJava   Toolchain = "java"
 	ToolchainNode   Toolchain = "node"
 )
 
@@ -19,7 +18,6 @@ const (
 	BaseImageRepo       = "elyro/workspace-base"
 	WorkspacePythonRepo = "elyro/workspace-python"
 	WorkspaceGoRepo     = "elyro/workspace-go"
-	WorkspaceJavaRepo   = "elyro/workspace-java"
 	WorkspaceNodeRepo   = "elyro/workspace-node"
 )
 
@@ -29,12 +27,10 @@ func ParseToolchain(raw string) (Toolchain, error) {
 		return ToolchainPython, nil
 	case ToolchainGo:
 		return ToolchainGo, nil
-	case ToolchainJava:
-		return ToolchainJava, nil
 	case ToolchainNode:
 		return ToolchainNode, nil
 	default:
-		return "", fmt.Errorf("unsupported toolchain %q (supported: python, go, java, node)", raw)
+		return "", fmt.Errorf("unsupported toolchain %q (supported: python, go, node)", raw)
 	}
 }
 
@@ -44,8 +40,6 @@ func (f Toolchain) Image(platform string) string {
 		return elyroimages.Reference(WorkspacePythonRepo, platform)
 	case ToolchainGo:
 		return elyroimages.Reference(WorkspaceGoRepo, platform)
-	case ToolchainJava:
-		return elyroimages.Reference(WorkspaceJavaRepo, platform)
 	case ToolchainNode:
 		return elyroimages.Reference(WorkspaceNodeRepo, platform)
 	default:
@@ -64,8 +58,6 @@ func (f Toolchain) DockerContextDir() string {
 		return "images/workspace-python"
 	case ToolchainGo:
 		return "images/workspace-go"
-	case ToolchainJava:
-		return "images/workspace-java"
 	case ToolchainNode:
 		return "images/workspace-node"
 	default:
@@ -87,11 +79,6 @@ func (f Toolchain) RecommendedExtensions() []string {
 			"ms-vscode-remote.remote-ssh",
 			"golang.go",
 		}
-	case ToolchainJava:
-		return []string{
-			"ms-vscode-remote.remote-ssh",
-			"vscjava.vscode-java-pack",
-		}
 	case ToolchainNode:
 		return []string{remoteSSHExtension}
 	default:
@@ -108,10 +95,6 @@ func (f Toolchain) Settings(mountDir string) map[string]any {
 			"terminal.integrated.defaultProfile.linux": "zsh",
 		}
 	case ToolchainGo, ToolchainNode:
-		return map[string]any{
-			"terminal.integrated.defaultProfile.linux": "zsh",
-		}
-	case ToolchainJava:
 		return map[string]any{
 			"terminal.integrated.defaultProfile.linux": "zsh",
 		}

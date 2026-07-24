@@ -1,10 +1,9 @@
 .PHONY: image-report image-report-test elyro-build elyro-install elyro-smoke \
 	release-config-check release-install-smoke core-images-smoke \
-	workspace-base-image-build workspace-python-image-build workspace-go-image-build workspace-java-image-build workspace-node-image-build \
+	workspace-base-image-build workspace-python-image-build workspace-go-image-build workspace-node-image-build \
 	workspace-base-image-build-amd64 workspace-base-image-build-arm64 \
 	workspace-python-image-build-amd64 workspace-python-image-build-arm64 \
 	workspace-go-image-build-amd64 workspace-go-image-build-arm64 \
-	workspace-java-image-build-amd64 workspace-java-image-build-arm64 \
 	workspace-node-image-build-amd64 workspace-node-image-build-arm64 \
 	workspace-build workspace-install workspace-smoke workspace-e2e demo-record help list-targets
 

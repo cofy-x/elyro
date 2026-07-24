@@ -93,3 +93,25 @@ func TestSkillShowPrintsEmbeddedSource(t *testing.T) {
 		t.Fatalf("skill show changed embedded bytes")
 	}
 }
+
+func TestSkillHelpDiscoversInspectionAndInstall(t *testing.T) {
+	cmd := NewSkillCmd()
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetArgs([]string{"--help"})
+	if err := cmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	for _, text := range []string{
+		"Inspect or install the Elyro Skill for coding agents",
+		"Print the complete embedded Elyro Skill",
+		"Install the embedded Elyro Skill for a host coding agent",
+		"Uninstall the embedded Elyro Skill",
+		"elyro skill show",
+		"elyro skill install codex",
+	} {
+		if !strings.Contains(out.String(), text) {
+			t.Fatalf("skill help does not contain %q:\n%s", text, out.String())
+		}
+	}
+}

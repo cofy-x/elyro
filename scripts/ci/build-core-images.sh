@@ -60,9 +60,6 @@ build "${prefix}/workspace-go:${tag}" images/workspace-go/Dockerfile images/work
   --build-arg "WORKSPACE_BASE_IMAGE=${workspace_base_image}" --build-arg "GO_VERSION=${ELYRO_GO_VERSION}" \
   --build-arg "GO_SHA256_AMD64=${ELYRO_GO_SHA256_AMD64}" --build-arg "GO_SHA256_ARM64=${ELYRO_GO_SHA256_ARM64}" \
   --build-arg "GOPROXY=${goproxy}"
-build "${prefix}/workspace-java:${tag}" images/workspace-java/Dockerfile images/workspace-java \
-  --build-arg "WORKSPACE_BASE_IMAGE=${workspace_base_image}" --build-arg "GRADLE_VERSION=${ELYRO_GRADLE_VERSION}" \
-  --build-arg "GRADLE_SHA256=${ELYRO_GRADLE_SHA256}"
 build "${prefix}/workspace-node:${tag}" images/workspace-node/Dockerfile images/workspace-node \
   --build-arg "WORKSPACE_BASE_IMAGE=${workspace_base_image}" --build-arg "NODE_VERSION=${ELYRO_NODE_VERSION}" \
   --build-arg "NODE_SHA256_AMD64=${ELYRO_NODE_SHA256_AMD64}" --build-arg "NODE_SHA256_ARM64=${ELYRO_NODE_SHA256_ARM64}"

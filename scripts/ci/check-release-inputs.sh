@@ -49,7 +49,6 @@ core_files=(
   images/workspace-base/Dockerfile
   images/workspace-python/Dockerfile
   images/workspace-go/Dockerfile
-  images/workspace-java/Dockerfile
   images/workspace-node/Dockerfile
 )
 
@@ -69,7 +68,7 @@ for file in "${core_files[@]}"; do
 done
 
 [[ -f "${budget_file}" ]] || fail "missing ${budget_file}"
-for image in workspace-base workspace-python workspace-go workspace-node workspace-java; do
+for image in workspace-base workspace-python workspace-go workspace-node; do
   grep -Eq '"'"${image}"'"[[:space:]]*:[[:space:]]*[1-9][0-9]*(\.[0-9]+)?' "${budget_file}" || \
     fail "${budget_file} has no positive MiB budget for ${image}"
 done
@@ -77,7 +76,7 @@ done
 first_from="$(awk '/^FROM / {print; exit}' images/workspace-base/Dockerfile)"
 [[ "${first_from}" == *'@sha256:'* ]] || fail "workspace-base Ubuntu image is not digest-pinned"
 [[ "${first_from#FROM }" == "${ELYRO_UBUNTU_IMAGE}" ]] || fail "Ubuntu digest differs from release/versions.env"
-for file in images/workspace-base/Dockerfile images/workspace-python/Dockerfile images/workspace-go/Dockerfile images/workspace-java/Dockerfile images/workspace-node/Dockerfile; do
+for file in images/workspace-base/Dockerfile images/workspace-python/Dockerfile images/workspace-go/Dockerfile images/workspace-node/Dockerfile; do
   require_line "${file}" "ARG DEBIAN_FRONTEND=noninteractive"
   if grep -Eq '^ENV[[:space:]]+DEBIAN_FRONTEND=' "${file}"; then
     fail "${file} exports build-only DEBIAN_FRONTEND at runtime"
@@ -90,12 +89,10 @@ require_line images/workspace-go/Dockerfile "ARG GO_SHA256_ARM64=${ELYRO_GO_SHA2
 require_line images/workspace-python/Dockerfile "ARG UV_VERSION=${ELYRO_UV_VERSION}"
 require_line images/workspace-python/Dockerfile "ARG UV_SHA256_AMD64=${ELYRO_UV_SHA256_AMD64}"
 require_line images/workspace-python/Dockerfile "ARG UV_SHA256_ARM64=${ELYRO_UV_SHA256_ARM64}"
-require_line images/workspace-java/Dockerfile "ARG GRADLE_VERSION=${ELYRO_GRADLE_VERSION}"
-require_line images/workspace-java/Dockerfile "ARG GRADLE_SHA256=${ELYRO_GRADLE_SHA256}"
 require_line images/workspace-node/Dockerfile "ARG NODE_VERSION=${ELYRO_NODE_VERSION}"
 require_line images/workspace-node/Dockerfile "ARG NODE_SHA256_AMD64=${ELYRO_NODE_SHA256_AMD64}"
 require_line images/workspace-node/Dockerfile "ARG NODE_SHA256_ARM64=${ELYRO_NODE_SHA256_ARM64}"
-for file in images/workspace-python/Dockerfile images/workspace-go/Dockerfile images/workspace-java/Dockerfile images/workspace-node/Dockerfile; do
+for file in images/workspace-python/Dockerfile images/workspace-go/Dockerfile images/workspace-node/Dockerfile; do
   require_line "${file}" "ARG WORKSPACE_BASE_IMAGE=ghcr.io/cofy-x/elyro/workspace-base:${ELYRO_RELEASE_VERSION}"
 done
 if grep -Eh '^ARG (GO|UV|NODE)_SHA256_(AMD64|ARM64)=' \
@@ -103,8 +100,6 @@ if grep -Eh '^ARG (GO|UV|NODE)_SHA256_(AMD64|ARM64)=' \
   grep -Ev '=[0-9a-f]{64}$'; then
 	fail "Go, uv, or Node.js checksum is not a lowercase SHA-256"
 fi
-[[ "${ELYRO_GRADLE_SHA256}" =~ ^[0-9a-f]{64}$ ]] || fail "Gradle checksum is not a lowercase SHA-256"
-
 if grep -REn 'raw\.githubusercontent\.com/.+/(main|master)/|git clone .+ --branch (main|master)' \
   "${core_files[@]}"; then
   fail "core image inputs contain an unpinned source checkout"

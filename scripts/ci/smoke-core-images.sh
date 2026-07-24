@@ -58,12 +58,10 @@ docker run --rm --platform "${platform}" "${prefix}/workspace-python:${tag}" bas
   "python --version && uv --version | grep -F 'uv ${ELYRO_UV_VERSION}'"
 docker run --rm --platform "${platform}" "${prefix}/workspace-go:${tag}" bash -lc \
   "go version | grep -F 'go${ELYRO_GO_VERSION}' && ! command -v golangci-lint"
-docker run --rm --platform "${platform}" "${prefix}/workspace-java:${tag}" bash -lc \
-  "java -version && mvn --version && gradle --version | grep -F 'Gradle ${ELYRO_GRADLE_VERSION}'"
 docker run --rm --platform "${platform}" "${prefix}/workspace-node:${tag}" bash -lc \
   "node --version | grep -F 'v${ELYRO_NODE_VERSION}' && npm --version && npx --version && corepack --version && python3 --version && command -v make g++ && test ! -e /usr/bin/dpkg-buildpackage"
 
-for image in workspace-base workspace-python workspace-go workspace-java workspace-node; do
+for image in workspace-base workspace-python workspace-go workspace-node; do
   smoke_shell_experience "${prefix}/${image}:${tag}"
 done
 
